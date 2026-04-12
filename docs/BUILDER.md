@@ -61,32 +61,90 @@ When you run the `captainhook` command (after professional installation), the bu
 
 ---
 
-## 4. Final Compilation
-After running the builder, you can compile the staged source into a single file:
+## 4. Final Compilation (Native)
+
+After running the builder, compile the staged source into a single file:
+
+**Linux / macOS:**
 ```bash
-pyinstaller --onefile --noconsole --icon=path/to/icon.ico build_staging/src/client/main.py
+pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py
+# Output: dist/CaptainHook (no extension on Linux)
 ```
+
+**Windows:**
+```bash
+pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py
+# Output: dist\CaptainHook.exe
+```
+
+> **Note:** Always run PyInstaller from the `CaptainHook/` project root. The output goes to `dist/`.
 
 ---
 
 ## 🚀 Advanced: Docker Workflow
 
-For professional cross-platform development, you can use **Docker** to compile for other operating systems without leaving your current environment.
+For professional cross-platform development, use **Docker** to compile for other operating systems without leaving your current environment.
 
-### **1. Setup**
-Ensure Docker and Docker Compose are installed on your machine.
+### 1. Prerequisites
 
-### **2. Compile for Windows (while on Linux)**
-Run the following command to create a true `.exe` using a Wine-based environment:
+Install Docker and Docker Compose on your host machine. On Linux:
 ```bash
+sudo apt update && sudo apt install docker.io docker-compose
+sudo usermod -aG docker $USER
+# Log out and back in for group membership to take effect
+```
+
+### 2. Run the Builder
+
+First, run the builder to stage the source with your Discord credentials:
+```bash
+cd ~/Dokumente/Github/CaptainHook
+python3 src/builder/main.py
+# Follow the prompts: enter Discord Token, Guild ID, select Preset, select Disguise
+```
+
+This creates the `build_staging/` directory with your injected credentials.
+
+### 3. Build for Windows (on Linux)
+
+```bash
+cd ~/Dokumente/Github/CaptainHook
 docker-compose up windows-builder
 ```
 
-### **3. Compile for Linux (while on Windows/Mac)**
-Run the following command to create a native Linux `.bin` executable:
+The Windows builder uses a Wine-based image (`cdrx/pyinstaller-windows`). This may take 5-15 minutes on first run (it downloads the image and builds in a Python 3.7 Wine environment).
+
+**Output:** `dist/CaptainHook.exe`
+
+### 4. Build for Linux (on Windows/Mac)
+
 ```bash
 docker-compose up linux-builder
 ```
+
+**Output:** `dist/CaptainHook` (no extension on Linux)
+
+### 5. Transfer to Target Machine
+
+Copy the output file to your target VM/PC:
+
+**Linux VM:** Copy `dist/CaptainHook` via shared folder, USB, or `scp`:
+```bash
+chmod +x CaptainHook
+./CaptainHook
+```
+
+**Windows VM:** Copy `dist/CaptainHook.exe` via shared folder or USB. Run as Administrator to test all features.
+
+### Troubleshooting Docker Builds
+
+**Error: `win32security not found`** — Fixed in v3.1. Ensure `pyproject.toml` includes `pywin32` with platform marker. Rebuild the builder stage first.
+
+**Error: `Script file does not exist`** — You ran PyInstaller from inside `dist/`. Always run from the `CaptainHook/` project root.
+
+**Error: `externally-managed-environment`** — You ran system `pip` on a PEP-668 managed Python. Use the virtual environment: `source .venv/bin/activate && pip install .`
+
+**Container exits immediately:** Check that Docker has internet access (the builder image downloads packages). Run `docker-compose up --build windows-builder` to force a fresh build.
 
 ---
 
