@@ -31,3 +31,6 @@ dependencies = [
 
 [project.scripts]
 captainhook = "src.builder.main:main"
+
+[tool.setuptools]
+packages = ["src", "src.builder", "src.client", "src.client.core", "src.client.modules", "src.common"]

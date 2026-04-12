@@ -21,7 +21,7 @@ CaptainHook is a high-performance Command & Control (C2) tool designed for ethic
 ### 1. Requirements & Setup
 Clone the repository and set up a virtual environment to keep your system clean:
 ```bash
-git clone YOUR_REPO_URL
+git clone https://github.com/Crown2Heavy/CaptainHook.git
 cd CaptainHook
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate

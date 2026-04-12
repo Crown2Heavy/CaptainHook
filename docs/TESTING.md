@@ -7,8 +7,16 @@ This guide explains how to safely test **CaptainHook v3** on different environme
 ## 🛠️ Environment 1: Local Linux (Linux Mint)
 Since this is your daily driver, we want to test the bot without "infecting" your system (skipping the Melt/Persistence).
 
-1.  **Preparation:**
+### **1. Linux System Prerequisites**
+Before installing the Python dependencies, you must install the audio development headers on your system:
+```bash
+sudo apt update && sudo apt install portaudio19-dev python3-all-dev
+```
+
+### **2. Preparation**
     ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
     pip install .
     ```
 2.  **Configuration:**
