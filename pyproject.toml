@@ -26,7 +26,8 @@ dependencies = [
     "keyboard",
     "pillow",
     "screeninfo",
-    "pyttsx3"
+    "pyttsx3",
+    'pywin32; platform_system == "Windows"',
 ]
 
 [project.scripts]

