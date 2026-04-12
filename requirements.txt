@@ -1,0 +1,25 @@
+discord.py[voice]
+PyNaCl
+rich
+mss
+pynput
+psutil
+requests
+pyinstaller
+pyautogui
+pygetwindow; platform_system == "Windows"
+pypiwin32; platform_system == "Windows"
+win32security; platform_system == "Windows"
+win32api; platform_system == "Windows"
+win32con; platform_system == "Windows"
+win32serviceutil; platform_system == "Windows"
+win32com; platform_system == "Windows"
+cryptography
+opencv-python
+sounddevice
+soundfile
+ping3
+vidstream
+keyboard
+pillow
+screeninfo
