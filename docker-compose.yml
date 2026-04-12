@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  # Build for Windows (.exe) using Wine
+  windows-builder:
+    image: cdrx/pyinstaller-windows
+    volumes:
+      - .:/src
+    command: |
+      bash -c "pip install . && pyinstaller --onefile --noconsole build_staging/src/client/main.py"
+
+  # Build for Linux (.bin) - Native
+  linux-builder:
+    image: python:3.12
+    volumes:
+      - .:/src
+    working_dir: /src
+    command: |
+      bash -c "pip install . && pyinstaller --onefile --noconsole build_staging/src/client/main.py"

