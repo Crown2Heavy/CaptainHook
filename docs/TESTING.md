@@ -9,7 +9,7 @@ Since this is your daily driver, we want to test the bot without "infecting" you
 
 1.  **Preparation:**
     ```bash
-    pip install -r requirements.txt
+    pip install .
     ```
 2.  **Configuration:**
     - Open `src/client/core/config.py`.
@@ -31,7 +31,7 @@ This is where you test the **Architect Builder** and the **Wraith Engine**.
 
 1.  **Build the Client (on your Host):**
     ```bash
-    python src/builder/main.py
+    captainhook
     ```
     - Choose the **🧪 The Tester** preset first to ensure all features work.
     - Choose the **👻 Ghost** preset later to test the "Melt" and "Persistence" logic.

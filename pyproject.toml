@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "captainhook"
+version = "3.0.0"
+description = "A professional, modular, and cross-platform remote management suite."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "discord.py[voice]",
+    "rich",
+    "mss",
+    "pynput",
+    "psutil",
+    "requests",
+    "pyinstaller",
+    "pyautogui",
+    "cryptography",
+    "opencv-python",
+    "sounddevice",
+    "soundfile",
+    "ping3",
+    "vidstream",
+    "keyboard",
+    "pillow",
+    "screeninfo",
+    "pyttsx3"
+]
+
+[project.scripts]
+captainhook = "src.builder.main:main"

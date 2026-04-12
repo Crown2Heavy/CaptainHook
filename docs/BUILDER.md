@@ -51,7 +51,7 @@ Disguises allow you to spoof the executable's appearance and metadata.
 
 ## 3. The Build Process
 
-When you run `python src/builder/main.py`, the builder performs several steps:
+When you run the `captainhook` command (after professional installation), the builder performs several steps:
 
 1.  **Staging:** Copies the source code to a temporary `build_staging/` directory.
 2.  **Injection:** Injects your Discord Token and Guild ID into `src/client/core/config.py`.
