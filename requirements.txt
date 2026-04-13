@@ -9,7 +9,7 @@ pyinstaller
 pyautogui
 pygetwindow; platform_system == "Windows"
 pywin32; platform_system == "Windows"
-cryptography>=3.4,<44
+cryptography==38.0.4
 opencv-python
 sounddevice
 soundfile
