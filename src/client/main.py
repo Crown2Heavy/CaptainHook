@@ -174,19 +174,29 @@ class CaptainHookBot(commands.Bot):
             except Exception as e:
                 logger.error(f"Error processing cache file {file_path}: {e}")
 
-    async def on_ready(self):
-        logger.info(f"Logged in as {self.user.name}")
-        await self.get_or_create_session_channel()
-        self.ensure_environment()
-        if self.is_connected:
-            await self.process_offline_cache()
+    async def on_command(self, ctx):
+        logger.info(f"[DISCORD] {ctx.author}: {ctx.command.name}")
+
+    async def on_command_completion(self, ctx):
+        logger.info(f"[SUCCESS] Command ${ctx.command.name} finished.")
+
+    async def on_command_error(self, ctx, error):
+        if isinstance(error, commands.CommandNotFound):
+            logger.warning(f"[DISCORD] Unknown command attempted: {ctx.message.content}")
+        else:
+            logger.error(f"[FAILED] {ctx.command.name if ctx.command else 'Unknown'}: {error}")
 
     @commands.command(name="p")
     async def _ping_test(self, ctx):
         """Hidden test command to verify bot is alive without cogs."""
-        await ctx.send(f"⚓ **Hook is Alive!**\n**Host:** `{socket.gethostname()}`\n**Modules Loaded:** `{len(self.cogs)}`")
+        try:
+            msg = f"⚓ **Hook is Alive!**\n**Host:** `{socket.gethostname()}`\n**Modules:** `{len(self.cogs)}`"
+            await ctx.send(msg)
+            logger.info(f"[TUI] Ping test triggered from {ctx.author}")
+        except Exception as e:
+            logger.error(f"Ping test failed: {e}")
 
-    def ensure_environment(self):
+    async def on_ready(self):
         appdata = Platform.get_appdata_path()
         own_path = os.path.join(appdata, Config.OWN_DIR_NAME)
         logs_path = os.path.join(own_path, Config.LOGS_DIR_NAME)
