@@ -58,3 +58,19 @@ The default command prefix is `$`.
 ## ☢️ Destructive
 - **`$nuke <path>`**: Recursively wipes a directory (USE WITH CAUTION).
 - **`$nuke_desktop`**: Quick command to wipe the target's desktop files.
+
+---
+
+## 🖥️ Developer Mode (Interactive TUI)
+
+When built with the **🛠️ Developer** preset, the bot launches a full-screen interactive dashboard on the remote machine.
+
+### **Features:**
+- **Live Output Log:** Every action the bot takes (Cog loading, connectivity, Discord messages) is displayed in real-time.
+- **System Health:** Monitoring of the bot's CPU and RAM footprint.
+- **Module Status:** Instant visual confirmation of which modules are active.
+- **Safe Exit:** Use `CTRL+C` to shut down the bot gracefully.
+
+### **Diagnostic Commands:**
+- **`$p`**: **Ping Test:** Independent of modules. Verifies the bot is alive, reports hostname, and counts loaded Cogs. Use this if other commands fail.
+- **`$reload <cog>`**: (Dev Only) Hot-reloads a module's code without restarting the bot.

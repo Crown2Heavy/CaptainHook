@@ -41,16 +41,26 @@ class AntiAnalysis:
                 return True
 
         # 4. Check for common VM files/drivers
-        vm_indicators = [
-            "/sys/class/dmi/id/product_name",
-            "C:\\windows\\System32\\Drivers\\VMMouse.sys",
-            "C:\\windows\\System32\\Drivers\\VBoxGuest.sys",
-            "C:\\windows\\System32\\Drivers\\vmtoolsd.exe"
-        ]
+        vm_indicators = {
+            "/sys/class/dmi/id/product_name": ["virtualbox", "vmware", "qemu", "kvm"],
+            "/proc/scsi/scsi": ["vmware", "vbox"],
+            "C:\\windows\\System32\\Drivers\\VMMouse.sys": [],
+            "C:\\windows\\System32\\Drivers\\VBoxGuest.sys": [],
+            "C:\\windows\\System32\\Drivers\\vmtoolsd.exe": []
+        }
         
-        for path in vm_indicators:
+        for path, keywords in vm_indicators.items():
             if os.path.exists(path):
-                return True
+                if not keywords: # Windows drivers existence is enough
+                    return True
+                try:
+                    with open(path, "r") as f:
+                        content = f.read().lower()
+                        for key in keywords:
+                            if key in content:
+                                return True
+                except:
+                    pass
         
         return False
 

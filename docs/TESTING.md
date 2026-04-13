@@ -36,12 +36,21 @@ export DISCORD_TOKEN="YOUR_DISCORD_BOT_TOKEN"
 
 ### Step 4: Run in Dev Mode
 ```bash
-python -m src.client.main
+# Recommended: Use the 🛠️ Developer preset in the builder first
+python3 src/builder/main.py # Select Developer preset
+python3 build_staging/src/client/main.py
 ```
+
+**Why use Developer Mode?**
+- **Full Transparency:** Launches an interactive TUI (Dashboard) so you can see exactly what the bot is doing.
+- **Safe Exit:** Press `CTRL+C` in the TUI to shut down the bot cleanly.
+- **Diagnostic Log:** Live scrolling output of all errors and activity.
+- **No Risks:** Anti-VM and Stealth are automatically disabled.
 
 ### Step 5: Verify
 - Check your Discord — the bot should appear online.
-- Try: `$info`, `$shell ls`, `$ss`
+- Check the TUI — you should see "Successfully loaded module: ..." for each Cog.
+- Try: `$p` (Ping Test), `$info`, `$ss`
 
 ---
 

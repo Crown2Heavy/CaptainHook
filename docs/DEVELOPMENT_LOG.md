@@ -28,5 +28,13 @@ The project has been fully migrated from a monolithic, Windows-only script (`Dis
 
 ---
 
+## 📅 Recent Updates (2026-04-13)
+- **Sentinel Test Suite:** Created `tests/sentinel/` for isolated troubleshooting of Core connectivity and Security/Anti-Analysis checks.
+- **Architect Builder Fixes:** Implemented `--hidden-import` and `--paths` for dynamic Cog support in PyInstaller. Improved CLI output for copy-paste safety.
+- **Client Resilience:** Added fallback module loading and diagnostic `$p` command for troubleshooting.
+- **Troubleshooting Guide:** Created `docs/TROUBLESHOOTING.md` for error tracking and resolution.
+
+---
+
 ## 📅 Final Roadmap Status
 - ✅ **All phases complete.** Project is stabilized, documented, and ready for deployment.

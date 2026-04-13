@@ -5,6 +5,7 @@ class Config:
     DISCORD_TOKEN = "[[DISCORD_TOKEN_PLACEHOLDER]]"
     GUILD_ID = "[[GUILD_ID_PLACEHOLDER]]"
     COMMAND_PREFIX = "$"
+    DEVELOPER_MODE = False
 
     # Default paths
     OWN_DIR_NAME = ".CaptainHook"

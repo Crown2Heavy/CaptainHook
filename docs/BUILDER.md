@@ -27,6 +27,13 @@ Presets are pre-defined configurations optimized for specific use-cases.
 - **Stealth (Wraith):** **DISABLED**.
 - **Use-Case:** Safe local development or testing in virtual machines where the bot should NOT hide or persist.
 
+### **🛠️ Developer (Full Control)**
+- **Included Modules:** Everything.
+- **Anti-VM:** **DISABLED**.
+- **Stealth (Wraith):** **DISABLED**.
+- **Interactive TUI:** **ENABLED** (Visible Console Mode).
+- **Use-Case:** High-visibility debugging on your own machine. Launches a full-screen dashboard with live logs, system stats, and module status.
+
 ### **🤡 Troll-Mode (High Visibility)**
 - **Included Modules:** Media, Control, Fun, Screenshot.
 - **Excluded Modules:** Browser extraction and Nuke (to avoid "real" damage).

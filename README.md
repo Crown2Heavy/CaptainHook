@@ -9,7 +9,8 @@ CaptainHook is a high-performance Command & Control (C2) tool designed for ethic
 ## ✨ Key Features
 
 - **🌐 Cross-Platform:** Native support for Windows 10/11/12, Linux (Mint, Ubuntu, etc.), and macOS.
-- **🛠️ Architect Builder:** Professional CLI tool with presets (Ghost, Full-Throttle, Tester) and disguise capabilities.
+- **🛠️ Architect Builder:** Professional CLI tool with presets (Ghost, Developer, Tester) and disguise capabilities.
+- **🖥️ Developer Mode:** Interactive TUI for real-time log monitoring, system status, and module control.
 - **🛡️ Wraith Engine:** Advanced stealth, "The Melt" dropper logic, and multi-layered persistence.
 - **📡 Siren Engine:** Discord-native audio/visual streaming and encrypted offline caching.
 - **🔐 Modular Design:** Easily extend or remove features via the plug-and-play module system.

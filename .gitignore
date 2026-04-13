@@ -59,6 +59,7 @@ env.bak/
 venv.bak/
 
 # Project specific
+tests/sentinel/
 build_staging/
 *.cache
 *.ico

