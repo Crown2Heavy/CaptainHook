@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/src
     command: |
-      bash -c "pip install . && pyinstaller --onefile --noconsole build_staging/src/client/main.py"
+      bash -c "python -m pip install --upgrade pip && pip install . && pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
 
   # Build for Linux (.bin) - Native
   linux-builder:
@@ -16,4 +16,4 @@ services:
       - .:/src
     working_dir: /src
     command: |
-      bash -c "pip install . && pyinstaller --onefile --noconsole build_staging/src/client/main.py"
+      bash -c "python -m pip install --upgrade pip && pip install . && pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
