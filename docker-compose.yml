@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/src
     command: |
-      bash -c "xvfb-run winpy -m pip install . && xvfb-run winpy -m PyInstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
+      bash -c "winpy -m pip install . && winpy -m PyInstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
 
   # Build for Linux (.bin) - Native
   linux-builder:
