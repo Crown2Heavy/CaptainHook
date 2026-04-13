@@ -208,24 +208,28 @@ def build(token, guild_id, preset_name, disguise_name):
             cmd = f"pyinstaller --onefile --noconsole --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ""
         
-    console.print(Panel(f"""
-[bold green]STAGING SUCCESSFUL![/bold green]
+    # Clear the progress and show success
+    console.print("\n[bold green]✅ STAGING SUCCESSFUL![/bold green]")
+    
+    # Summary Table
+    table = Table(box=None, padding=(0, 2))
+    table.add_column("Property", style="cyan")
+    table.add_column("Value", style="white")
+    table.add_row("Source", "build_staging/src/client/main.py")
+    table.add_row("Preset", preset_name)
+    table.add_row("Modules", ", ".join(preset['modules']))
+    table.add_row("Stealth", "[green]ENABLED[/green]" if preset['stealth'] else "[red]DISABLED[/red]")
+    table.add_row("Output", f"dist/CaptainHook{ext}")
+    console.print(table)
 
-[cyan]Source:[/cyan] [white]build_staging/src/client/main.py[/white]
-[cyan]Preset:[/cyan] [white]{preset_name}[/white]
-[cyan]Modules:[/cyan] [dim]{', '.join(preset['modules'])}[/dim]
-[cyan]Stealth:[/cyan] [white]{'ENABLED' if preset['stealth'] else 'DISABLED'}[/white]
+    console.print("\n[bold yellow]🚀 Final Step: Run the command below to compile:[/bold yellow]")
+    console.print("-" * 80)
+    console.print(f"[white]{cmd}[/white]")
+    console.print("-" * 80)
 
-[bold yellow]Final Step (Manual Compilation):[/bold yellow]
-You are on [bold]{'Windows' if os.name == 'nt' else 'Linux/macOS'}[/bold].
-Output file: [bold]dist/CaptainHook{ext}[/bold]
-To compile, run:
-[dim]{cmd}[/dim]
-
-[bold cyan]💡 Cross-Platform Tip:[/bold cyan]
-To build for Windows while on Linux, ensure Docker is installed and run:
-[dim]docker-compose up windows-builder[/dim]
-    """, border_style="green"))
+    console.print("\n[bold cyan]💡 Cross-Platform Tip:[/bold cyan]")
+    console.print("To build for Windows while on Linux, ensure Docker is installed and run:")
+    console.print("[dim]docker-compose up windows-builder[/dim]\n")
 
 def main():
     display_banner()
