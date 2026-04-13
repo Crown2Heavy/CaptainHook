@@ -96,12 +96,16 @@ sudo usermod -aG docker $USER
 
 ### 2. Run the Builder
 
-First, run the builder to stage the source with your Discord credentials:
+Set up a virtual environment (optional but recommended to keep your system clean) and run the builder:
 ```bash
 cd ~/Dokumente/Github/CaptainHook
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 python3 src/builder/main.py
 # Follow the prompts: enter Discord Token, Guild ID, select Preset, select Disguise
 ```
+
+> **Note:** The builder itself doesn't require the package to be installed (`pip install .`). It runs the script directly to generate `build_staging/`. Using venv here is optional but recommended to avoid polluting your system Python.
 
 This creates the `build_staging/` directory with your injected credentials.
 
@@ -148,9 +152,25 @@ chmod +x CaptainHook
 
 ---
 
-## 🍎 macOS Restrictions
+## 🧹 Cleanup (After Build)
 
-Due to Apple's security policies and hardware restrictions, native macOS executables cannot be easily cross-compiled from Linux or Windows.
+Once you have your compiled binary in `dist/`, you can safely remove everything else:
+
+```bash
+# Remove build artifacts and source (keeps only the final binary)
+rm -rf build build_staging dist/CaptainHook.spec
+rm -rf .venv           # virtual environment
+rm -rf __pycache__ .pytest_cache src/**/__pycache__
+
+# Optional: remove docs and other non-essential files
+rm -rf docs tests .github
+```
+
+**Result:** Only `dist/CaptainHook` (or `.exe`) remains — a single portable binary.
+
+> Docker files can remain if you plan to rebuild later. Remove them with `rm -rf docker-compose.yml Dockerfile .dockerignore` if you want a truly clean slate.
+
+## 🍎 macOS Restrictions
 
 - **Standard Method:** You must run the builder and PyInstaller on actual macOS hardware.
 - **Alternative:** For advanced users, tools like [osxcross](https://github.com/tpoechtrager/osxcross) exist but are complex to set up.

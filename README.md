@@ -19,13 +19,15 @@ CaptainHook is a high-performance Command & Control (C2) tool designed for ethic
 ## 🚀 Quick Start
 
 ### 1. Requirements & Setup
-Clone the repository and set up a virtual environment to keep your system clean:
+Clone the repository and set up a virtual environment (recommended):
 ```bash
 git clone https://github.com/Crown2Heavy/CaptainHook.git
 cd CaptainHook
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 ```
+
+> **Want only the final binary?** After building, see [Builder Configuration](./docs/BUILDER.md#-cleanup-after-build) for easy cleanup instructions.
 
 ### 2. Professional Installation
 Install the project as a package:
@@ -37,6 +39,11 @@ pip install .
 Launch the **Architect Builder** directly from your terminal:
 ```bash
 captainhook
+```
+
+Alternatively, run the builder script directly (no installation required):
+```bash
+python3 src/builder/main.py
 ```
 
 > ⚠️ **Important Note:** By default, the builder creates executables for the OS you are currently working on. To build for other platforms (e.g., Windows .exe on Linux), see the [Advanced Builder Guide](./docs/BUILDER.md#advanced-docker-workflow).
