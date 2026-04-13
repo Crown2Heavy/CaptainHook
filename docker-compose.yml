@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/src
     command: |
-      bash -c "python -m pip install --upgrade pip && pip install . && pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
+      bash -c "python -m pip install --upgrade pip==23.3 && pip install . && pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
 
   # Build for Linux (.bin) - Native
   linux-builder:
