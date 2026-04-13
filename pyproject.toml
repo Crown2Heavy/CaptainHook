@@ -23,11 +23,12 @@ dependencies = [
     "soundfile",
     "ping3",
     "vidstream",
-    "keyboard",
     "pillow",
     "screeninfo",
     "pyttsx3",
     'pywin32; platform_system == "Windows"',
+    'evdev; platform_system == "Linux"',
+    'pyaudio; platform_system == "Linux"',
 ]
 
 [project.scripts]
