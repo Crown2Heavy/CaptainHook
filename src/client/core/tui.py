@@ -222,6 +222,7 @@ class DeveloperTUI:
                 layout["header"].update(self.make_header())
                 layout["sidebar"].update(self.make_sidebar())
                 layout["body"].update(self.make_log_view())
+                layout["output"].update(self.make_output_view())
                 layout["input"].update(self.make_input_panel())
                 layout["footer"].update(self.make_footer())
                 time.sleep(0.1)
