@@ -3,11 +3,11 @@ version: '3.8'
 services:
   # Build for Windows (.exe) using Wine
   windows-builder:
-    image: cdrx/pyinstaller-windows
+    build: .
     volumes:
       - .:/src
     command: |
-      bash -c "python -m pip install --upgrade pip==23.3 && pip install . && pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
+      bash -c "pip install . && pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
 
   # Build for Linux (.bin) - Native
   linux-builder:
