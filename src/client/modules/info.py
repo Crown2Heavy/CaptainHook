@@ -7,6 +7,7 @@ import discord
 from discord.ext import commands
 from src.client.core.platform import Platform
 from datetime import datetime
+from ping3 import ping
 
 class Info(commands.Cog):
     def __init__(self, bot):
@@ -67,6 +68,18 @@ class Info(commands.Cog):
             os.remove(file_path)
         else:
             await ctx.send(f"```\n{output}\n```")
+
+    @commands.command(name="ping", help="Ping a specific IP or 8.8.8.8 to check connection.")
+    async def ping_cmd(self, ctx, target: str = "8.8.8.8"):
+        try:
+            # ping3 returns time in ms or None
+            result = ping(target, unit='ms')
+            if result:
+                await ctx.send(f"⚓ **Ping to {target}:** `{result:.2f} ms`")
+            else:
+                await ctx.send(f"❌ **Ping to {target} failed.**")
+        except Exception as e:
+            await ctx.send(f"❌ **Ping Error:** {str(e)}")
 
 async def setup(bot):
     await bot.add_cog(Info(bot))

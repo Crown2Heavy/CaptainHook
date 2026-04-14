@@ -63,7 +63,33 @@ class DeveloperTUI:
         handler.setFormatter(formatter)
         root_logger.addHandler(handler)
 
+    def is_foreground(self):
+        """Check if the current process is in the foreground."""
+        try:
+            if Platform.is_linux():
+                # On Linux, check if the process group is the foreground one on the terminal
+                # Standard check for interactive terminal foreground process
+                try:
+                    return os.getpgrp() == os.tcgetpgrp(sys.stdin.fileno())
+                except:
+                    return True # Fallback
+            elif Platform.is_windows():
+                import ctypes
+                try:
+                    hwnd = ctypes.windll.user32.GetForegroundWindow()
+                    pid = ctypes.c_ulong()
+                    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                    return pid.value == os.getpid()
+                except:
+                    return True
+            return True
+        except:
+            return True
+
     def on_press(self, key):
+        if not self.is_foreground():
+            return
+
         try:
             if hasattr(key, 'char') and key.char:
                 self.current_input += key.char
@@ -196,7 +222,7 @@ class DeveloperTUI:
 
     def save_snapshot(self):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        appdata = Platform.get_appdata_path()
+        appdata = Platform.get_appdata_path(local=Config.DEVELOPER_MODE)
         log_dir = os.path.join(appdata, Config.OWN_DIR_NAME, "logs")
         os.makedirs(log_dir, exist_ok=True)
         file_path = os.path.join(log_dir, f"tui_snapshot_{timestamp}.log")

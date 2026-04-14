@@ -16,7 +16,13 @@ class Platform:
         return platform.system() == "Darwin"
 
     @staticmethod
-    def get_appdata_path():
+    def get_appdata_path(local=False):
+        if local:
+            # If local is requested (Developer Mode), use a folder in the current directory
+            local_path = os.path.join(os.getcwd(), ".data")
+            os.makedirs(local_path, exist_ok=True)
+            return local_path
+
         if Platform.is_windows():
             return os.environ.get('APPDATA')
         elif Platform.is_linux() or Platform.is_macos():

@@ -9,7 +9,7 @@ from src.client.core.config import Config
 
 class OfflineCache:
     def __init__(self):
-        self.appdata = Platform.get_appdata_path()
+        self.appdata = Platform.get_appdata_path(local=Config.DEVELOPER_MODE)
         self.cache_dir = os.path.join(self.appdata, Config.OWN_DIR_NAME, ".cache")
         # In a real build, this key would be unique/stored safely
         self.key = b'6fR_w_Jv7X6V_m7f-p8S0U6M3g9_K9B0E1L2_P3R4S5=' 

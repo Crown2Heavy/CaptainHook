@@ -197,7 +197,7 @@ class CaptainHookBot(commands.Bot):
             logger.error(f"Ping test failed: {e}")
 
     async def on_ready(self):
-        appdata = Platform.get_appdata_path()
+        appdata = Platform.get_appdata_path(local=Config.DEVELOPER_MODE)
         own_path = os.path.join(appdata, Config.OWN_DIR_NAME)
         logs_path = os.path.join(own_path, Config.LOGS_DIR_NAME)
         
@@ -206,7 +206,7 @@ class CaptainHookBot(commands.Bot):
 
 async def main():
     # Setup emergency file logging
-    appdata = Platform.get_appdata_path()
+    appdata = Platform.get_appdata_path(local=Config.DEVELOPER_MODE)
     own_path = os.path.join(appdata, Config.OWN_DIR_NAME)
     os.makedirs(own_path, exist_ok=True)
     error_log = os.path.join(own_path, "startup_error.log")

@@ -154,6 +154,52 @@ class Media(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Camera Error: {str(e)}")
 
+    @commands.command(name="camvid", help="Record a video from the camera (default 10s).")
+    async def camvid(self, ctx, seconds: int = 10):
+        if seconds > 60:
+            await ctx.send("⚠️ Max video duration is 60 seconds.")
+            seconds = 60
+
+        try:
+            cam = cv2.VideoCapture(0)
+            if not cam.isOpened():
+                await ctx.send("❌ Error: No camera found or access denied.")
+                return
+
+            # Get camera properties
+            width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = 20.0 
+
+            # Use AVI with XVID
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            file_path = f"camvid_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi"
+            out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
+
+            await ctx.send(f"🎥 Recording {seconds}s video...")
+            
+            start_time = time.time()
+            # Capture loop - careful with asyncio.sleep to not block but also not drift too much
+            while (time.time() - start_time) < seconds:
+                ret, frame = cam.read()
+                if ret:
+                    out.write(frame)
+                else:
+                    break
+                await asyncio.sleep(0.04) # approx 25fps cap
+
+            cam.release()
+            out.release()
+
+            if os.path.exists(file_path):
+                await ctx.send(f"🎥 Video record complete:", file=discord.File(file_path))
+                os.remove(file_path)
+            else:
+                await ctx.send("❌ Error: Video file was not created.")
+
+        except Exception as e:
+            await ctx.send(f"❌ Camera Video Error: {str(e)}")
+
     @commands.command(name="audiorecord", help="Record audio (default 10s).")
     async def audiorecord(self, ctx, seconds: int = 10):
         if seconds > 60:
