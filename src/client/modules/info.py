@@ -21,7 +21,7 @@ class Info(commands.Cog):
                 return f"{bytes:.2f}{unit}{suffix}"
             bytes /= factor
 
-    @commands.command(name="info", help="Get a full detailed system information report.")
+    @commands.command(name="info", aliases=["sys"], help="Get a full detailed system information report.")
     async def system_info(self, ctx):
         try:
             embed = discord.Embed(title="🖥️ System Information", color=discord.Color.blue())
@@ -69,15 +69,41 @@ class Info(commands.Cog):
         else:
             await ctx.send(f"```\n{output}\n```")
 
-    @commands.command(name="ping", help="Ping a specific IP or 8.8.8.8 to check connection.")
+    @commands.command(name="ping", aliases=["p"], help="Ping a specific IP or 8.8.8.8 to check connection.")
     async def ping_cmd(self, ctx, target: str = "8.8.8.8"):
         try:
-            # ping3 returns time in ms or None
-            result = ping(target, unit='ms')
-            if result:
-                await ctx.send(f"⚓ **Ping to {target}:** `{result:.2f} ms`")
+            # Try ping3 first (cleaner)
+            try:
+                result = ping(target, unit='ms')
+                if result:
+                    await ctx.send(f"⚓ **Ping to {target}:** `{result:.2f} ms` (ping3)")
+                    return
+                else:
+                    await ctx.send(f"❌ **Ping to {target} failed.** (ping3 timeout)")
+                    return
+            except PermissionError:
+                # Common on Linux without sudo - fall back to system ping
+                pass
+            except Exception:
+                pass
+
+            # Fallback: System ping command
+            import subprocess
+            cmd = ["ping", "-c", "1", target] if not Platform.is_windows() else ["ping", "-n", "1", target]
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = proc.communicate()
+            
+            if proc.returncode == 0:
+                output = stdout.decode()
+                # Simple extraction of time for Linux/Windows
+                if "time=" in output:
+                    ping_time = output.split("time=")[1].split(" ")[0]
+                    await ctx.send(f"⚓ **Ping to {target}:** `{ping_time}` (system fallback)")
+                else:
+                    await ctx.send(f"⚓ **Ping to {target}:** `Success` (system fallback)")
             else:
-                await ctx.send(f"❌ **Ping to {target} failed.**")
+                await ctx.send(f"❌ **Ping to {target} failed.**\n`{stderr.decode()}`")
+
         except Exception as e:
             await ctx.send(f"❌ **Ping Error:** {str(e)}")
 

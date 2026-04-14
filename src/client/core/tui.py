@@ -67,12 +67,21 @@ class DeveloperTUI:
         """Check if the current process is in the foreground."""
         try:
             if Platform.is_linux():
-                # On Linux, check if the process group is the foreground one on the terminal
-                # Standard check for interactive terminal foreground process
                 try:
-                    return os.getpgrp() == os.tcgetpgrp(sys.stdin.fileno())
+                    # Check if the process group is the foreground one on the controlling terminal
+                    # We try multiple ways to get the controlling terminal
+                    for fd in [sys.stdin.fileno(), sys.stdout.fileno(), sys.stderr.fileno()]:
+                        try:
+                            if os.getpgrp() == os.tcgetpgrp(fd):
+                                return True
+                        except:
+                            continue
+                    
+                    # If all FDs fail, we might not be in the foreground or don't have a TTY
+                    # In Developer mode on Mint, the terminal should have a TTY
+                    return False
                 except:
-                    return True # Fallback
+                    return True # Fallback to True to not block input if check is broken
             elif Platform.is_windows():
                 import ctypes
                 try:
@@ -106,6 +115,8 @@ class DeveloperTUI:
                 self.current_input = ""
             elif key == keyboard.Key.f5:
                 self.save_snapshot()
+            elif key == keyboard.Key.f6:
+                self.save_snapshot(full=True)
         except Exception as e:
             pass
 
@@ -176,7 +187,7 @@ class DeveloperTUI:
         return Panel(grid, style="white on blue", border_style="blue")
 
     def make_footer(self):
-        return Text(" [F5] Snapshot | [ESC] Clear | [ENTER] Run | [CTRL+C] Quit Safely ", style="dim cyan", justify="center")
+        return Text(" [F5] Snapshot | [F6] Full Log | [ESC] Clear | [ENTER] Run | [CTRL+C] Quit Safely ", style="dim cyan", justify="center")
 
     def make_sidebar(self):
         table = Table(title="[bold]Modules[/bold]", border_style="cyan", expand=True, box=None)
@@ -191,13 +202,17 @@ class DeveloperTUI:
         return Panel(table, border_style="cyan")
 
     def make_log_view(self):
+        # Process ALL pending logs from queue to stay current
         while not self.log_queue.empty():
             self.logs.append(self.log_queue.get())
-            if len(self.logs) > self.max_logs:
+            # Limit memory, but enough for scroll/view (keep last 500)
+            if len(self.logs) > 500:
                 self.logs.pop(0)
 
         log_render = Text()
-        for log in self.logs:
+        # View only the last 35 logs for the current panel (autoscroll effect)
+        view_window = self.logs[-self.max_logs:] if len(self.logs) > self.max_logs else self.logs
+        for log in view_window:
             if "ERROR" in log or "FAILED" in log:
                 log_render.append(log + "\n", style="bold red")
             elif "SUCCESS" in log or "LOADED" in log:
@@ -209,7 +224,7 @@ class DeveloperTUI:
             else:
                 log_render.append(log + "\n", style="white")
                 
-        return Panel(log_render, title="[bold]System Event Log[/bold]", border_style="green")
+        return Panel(log_render, title=f"[bold]System Event Log ({len(self.logs)} total)[/bold]", border_style="green")
 
     def make_output_view(self):
         output_text = Text()
@@ -220,15 +235,20 @@ class DeveloperTUI:
     def make_input_panel(self):
         return Panel(Text(f"> {self.current_input}_", style="bold yellow"), title="[bold]Manual Command Input[/bold]", border_style="yellow")
 
-    def save_snapshot(self):
+    def save_snapshot(self, full=False):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         appdata = Platform.get_appdata_path(local=Config.DEVELOPER_MODE)
         log_dir = os.path.join(appdata, Config.OWN_DIR_NAME, "logs")
         os.makedirs(log_dir, exist_ok=True)
-        file_path = os.path.join(log_dir, f"tui_snapshot_{timestamp}.log")
+        prefix = "tui_full" if full else "tui_snapshot"
+        file_path = os.path.join(log_dir, f"{prefix}_{timestamp}.log")
+        
+        # If not full, only save what was visible
+        to_save = self.logs if full else self.logs[-self.max_logs:]
+        
         with open(file_path, "w") as f:
-            f.write("\n".join(self.logs))
-        logging.info(f"[TUI] Log snapshot saved to: {file_path}")
+            f.write("\n".join(to_save))
+        logging.info(f"[TUI] {'Full' if full else 'Visible'} log saved to: {file_path}")
 
     def run(self):
         layout = self.get_layout()
@@ -239,15 +259,17 @@ class DeveloperTUI:
                 logging.error(f"[TUI] Could not start listener: {e}")
 
         try:
-            with Live(layout, refresh_per_second=4, screen=True) as live:
+            # Increase refresh rate to 10 to feel more responsive
+            with Live(layout, refresh_per_second=10, screen=True) as live:
                 while self.is_running:
+                    # Update data
                     layout["header"].update(self.make_header())
                     layout["sidebar"].update(self.make_sidebar())
                     layout["body"].update(self.make_log_view())
                     layout["output"].update(self.make_output_view())
                     layout["input"].update(self.make_input_panel())
                     layout["footer"].update(self.make_footer())
-                    time.sleep(0.1)
+                    time.sleep(0.05)
         except Exception as e:
              logging.error(f"[TUI] Live TUI CRASHED: {e}")
              self.is_running = False

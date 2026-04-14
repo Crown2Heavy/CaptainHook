@@ -18,7 +18,7 @@ class Shell(commands.Cog):
             # Linux/macOS
             return ["/bin/bash", "-c"]
 
-    @commands.command(name="shell", help="Execute a shell command on the remote machine.")
+    @commands.command(name="shell", aliases=["sh", "cmd"], help="Execute a shell command on the remote machine.")
     async def execute_shell(self, ctx, *, command: str):
         try:
             # Special handling for 'cd' command
@@ -71,7 +71,7 @@ class Shell(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Shell Error: {str(e)}")
 
-    @commands.command(name="pwd", help="Show current working directory.")
+    @commands.command(name="pwd", aliases=["ls", "dir"], help="Show current working directory.")
     async def show_pwd(self, ctx):
         await ctx.send(f"📍 Current Directory: `{os.getcwd()}`")
 

