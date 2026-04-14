@@ -8,30 +8,6 @@ import asyncio
 from datetime import datetime
 from threading import Thread
 from queue import Queue
-
-from rich.console import Console
-from rich.layout import Layout
-from rich.panel import Panel
-from rich.table import Table
-from rich.live import Live
-from rich.text import Text
-from rich.align import Align
-from rich.logging import RichHandler
-from rich.console import Group
-
-from src.client.core.config import Config
-from src.client.core.platform import Platform
-
-import os
-import sys
-import time
-import socket
-import psutil
-import logging
-import asyncio
-from datetime import datetime
-from threading import Thread
-from queue import Queue
 from pynput import keyboard
 
 from rich.console import Console
@@ -70,15 +46,20 @@ class DeveloperTUI:
         # Setup Logging redirection
         self.setup_logging()
         
-        # Keyboard Listener
-        self.listener = keyboard.Listener(on_press=self.on_press)
+        try:
+            # Keyboard Listener
+            self.listener = keyboard.Listener(on_press=self.on_press)
+        except Exception as e:
+            logging.error(f"[TUI] Failed to start keyboard listener: {e}")
+            self.listener = None
 
     def setup_logging(self):
         root_logger = logging.getLogger()
         root_logger.handlers = []
         root_logger.setLevel(logging.INFO)
         handler = TUILogHandler(self.log_queue)
-        formatter = logging.Formatter('%H:%M:%S | %(message)s')
+        # Fix for date formatting
+        formatter = logging.Formatter('%(asctime)s | %(message)s', datefmt='%H:%M:%S')
         handler.setFormatter(formatter)
         root_logger.addHandler(handler)
 
@@ -100,36 +81,35 @@ class DeveloperTUI:
             elif key == keyboard.Key.f5:
                 self.save_snapshot()
         except Exception as e:
-            # We don't want the listener to die
             pass
 
     def execute_local_command(self, cmd_text):
         """Bridge TUI input to Bot commands."""
         logging.info(f"[TUI] Executing: {cmd_text}")
         
-        # We need to run this in the bot's event loop
         async def run_cmd():
-            # Strip prefix if user added it
             clean_cmd = cmd_text[1:] if cmd_text.startswith(Config.COMMAND_PREFIX) else cmd_text
             parts = clean_cmd.split()
+            if not parts:
+                return
             cmd_name = parts[0]
-            args = parts[1:]
-
+            
             command = self.bot.get_command(cmd_name)
             if command:
                 try:
-                    # In Dev Mode, we allow running commands without a full Discord Context
-                    # by looking up the cog and calling the method directly if needed,
-                    # but for now, we'll log the 'intent' to trigger.
                     logging.info(f"[TUI] Found command: {cmd_name}. Triggering...")
-                    
-                    # For complex commands, we'd need a mock Context. 
-                    # For simple ones, we just log success.
-                    # Future: Implement a full Mock Context for local execution.
                     if cmd_name == "p":
-                        await self.bot._ping_test(None) # Call ping directly
+                        # Create a mock context for ping test
+                        class MockCtx:
+                            def __init__(self, bot):
+                                self.bot = bot
+                                self.author = "LocalDev"
+                            async def send(self, msg, **kwargs):
+                                logging.info(f"[TUI] Command Result: {msg}")
+                        
+                        await self.bot._ping_test(MockCtx(self.bot))
                     else:
-                        logging.info(f"[TUI] Local execution for '${cmd_name}' is active. (Mock Context pending)")
+                        logging.info(f"[TUI] Local execution for '${cmd_name}' is active. Redirecting output to TUI soon.")
                 except Exception as e:
                     logging.error(f"[TUI] Execution Error: {e}")
             else:
@@ -147,7 +127,11 @@ class DeveloperTUI:
         )
         layout["main"].split_row(
             Layout(name="sidebar", size=26),
-            Layout(name="body")
+            Layout(name="content")
+        )
+        layout["content"].split_column(
+            Layout(name="body", ratio=2),
+            Layout(name="output", ratio=1)
         )
         return layout
 
@@ -201,6 +185,12 @@ class DeveloperTUI:
                 
         return Panel(log_render, title="[bold]System Event Log[/bold]", border_style="green")
 
+    def make_output_view(self):
+        output_text = Text()
+        output_text.append(" [SYSTEM] Command Results Window Active\n", style="bold cyan")
+        output_text.append(" Waiting for local command execution results...", style="dim")
+        return Panel(output_text, title="[bold]Command Results[/bold]", border_style="cyan")
+
     def make_input_panel(self):
         return Panel(Text(f"> {self.current_input}_", style="bold yellow"), title="[bold]Manual Command Input[/bold]", border_style="yellow")
 
@@ -216,16 +206,25 @@ class DeveloperTUI:
 
     def run(self):
         layout = self.get_layout()
-        self.listener.start()
-        with Live(layout, refresh_per_second=4, screen=True) as live:
-            while self.is_running:
-                layout["header"].update(self.make_header())
-                layout["sidebar"].update(self.make_sidebar())
-                layout["body"].update(self.make_log_view())
-                layout["output"].update(self.make_output_view())
-                layout["input"].update(self.make_input_panel())
-                layout["footer"].update(self.make_footer())
-                time.sleep(0.1)
+        if self.listener:
+            try:
+                self.listener.start()
+            except Exception as e:
+                logging.error(f"[TUI] Could not start listener: {e}")
+
+        try:
+            with Live(layout, refresh_per_second=4, screen=True) as live:
+                while self.is_running:
+                    layout["header"].update(self.make_header())
+                    layout["sidebar"].update(self.make_sidebar())
+                    layout["body"].update(self.make_log_view())
+                    layout["output"].update(self.make_output_view())
+                    layout["input"].update(self.make_input_panel())
+                    layout["footer"].update(self.make_footer())
+                    time.sleep(0.1)
+        except Exception as e:
+             logging.error(f"[TUI] Live TUI CRASHED: {e}")
+             self.is_running = False
 
     def start(self):
         t = Thread(target=self.run, daemon=True)

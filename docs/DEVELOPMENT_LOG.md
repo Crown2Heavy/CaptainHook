@@ -29,8 +29,9 @@ The project has been fully migrated from a monolithic, Windows-only script (`Dis
 ---
 
 ## 📅 Recent Updates (2026-04-13)
+- **Developer TUI v2.2:** Implemented a full-screen interactive dashboard using `rich`. Features live Discord event logging, system resource monitoring, and a local keyboard-command bridge via `pynput`.
 - **Sentinel Test Suite:** Created `tests/sentinel/` for isolated troubleshooting of Core connectivity and Security/Anti-Analysis checks.
-- **Architect Builder Fixes:** Implemented `--hidden-import` and `--paths` for dynamic Cog support in PyInstaller. Improved CLI output for copy-paste safety.
+- **Architect Builder Fixes:** Implemented `--hidden-import` and `--paths` for dynamic Cog support in PyInstaller. Added the `🛠️ Developer` preset which disables stealth for safe local testing.
 - **Client Resilience:** Added fallback module loading and diagnostic `$p` command for troubleshooting.
 - **Troubleshooting Guide:** Created `docs/TROUBLESHOOTING.md` for error tracking and resolution.
 

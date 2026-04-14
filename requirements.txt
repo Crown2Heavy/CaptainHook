@@ -5,6 +5,7 @@ mss
 pynput
 psutil
 requests
+aiohttp
 pyinstaller
 pyautogui
 pygetwindow; platform_system == "Windows"

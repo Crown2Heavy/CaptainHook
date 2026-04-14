@@ -15,6 +15,7 @@ dependencies = [
     "pynput",
     "psutil",
     "requests",
+    "aiohttp",
     "pyinstaller",
     "pyautogui",
     "cryptography",
