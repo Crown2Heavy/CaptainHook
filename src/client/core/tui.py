@@ -42,6 +42,7 @@ class DeveloperTUI:
         self.start_time = time.time()
         self.is_running = True
         self.current_input = ""
+        self.input_mode = False # Strict mode: must press F10 to type
         
         # Setup Logging redirection
         self.setup_logging()
@@ -96,6 +97,17 @@ class DeveloperTUI:
             return True
 
     def on_press(self, key):
+        # Always allow F10 to toggle input mode
+        if key == keyboard.Key.f10:
+            self.input_mode = not self.input_mode
+            status = "ENABLED" if self.input_mode else "DISABLED"
+            logging.info(f"[TUI] Manual Input {status} (F10)")
+            return
+
+        # If input mode is disabled, ignore all other keys
+        if not self.input_mode:
+            return
+
         if not self.is_foreground():
             return
 
@@ -187,7 +199,7 @@ class DeveloperTUI:
         return Panel(grid, style="white on blue", border_style="blue")
 
     def make_footer(self):
-        return Text(" [F5] Snapshot | [F6] Full Log | [ESC] Clear | [ENTER] Run | [CTRL+C] Quit Safely ", style="dim cyan", justify="center")
+        return Text(" [F5] Snapshot | [F6] Full Log | [F10] Toggle Input | [ESC] Clear | [ENTER] Run | [CTRL+C] Quit Safely ", style="dim cyan", justify="center")
 
     def make_sidebar(self):
         table = Table(title="[bold]Modules[/bold]", border_style="cyan", expand=True, box=None)
@@ -233,7 +245,9 @@ class DeveloperTUI:
         return Panel(output_text, title="[bold]Command Results[/bold]", border_style="cyan")
 
     def make_input_panel(self):
-        return Panel(Text(f"> {self.current_input}_", style="bold yellow"), title="[bold]Manual Command Input[/bold]", border_style="yellow")
+        color = "green" if self.input_mode else "red"
+        status = "ENABLED" if self.input_mode else "DISABLED (Press F10)"
+        return Panel(Text(f"> {self.current_input}_", style="bold yellow"), title=f"[bold]Manual Command Input [{status}][/bold]", border_style=color)
 
     def save_snapshot(self, full=False):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

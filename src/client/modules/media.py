@@ -171,10 +171,9 @@ class Media(commands.Cog):
             height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = 20.0 
 
-            # Discord playability requires H264 (avc1) for MP4
+            # mp4v is often more robust for direct playback from OpenCV
             if format.lower() == "mp4":
-                # 'avc1' is the standard H264 codec for MP4 playability in Discord/Browsers
-                fourcc = cv2.VideoWriter_fourcc(*'avc1')
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 ext = ".mp4"
             else:
                 # Use AVI with XVID (Universal fallback)
@@ -184,24 +183,18 @@ class Media(commands.Cog):
             file_path = f"camvid_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
             out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
 
-            # If H264 fails and force is not set, fallback to XVID/AVI
+            # If it fails, fallback to XVID/AVI
             if not out.isOpened():
                 if force:
-                    await ctx.send(f"❌ Error: Forced format `{format}` with specific codec failed to initialize.")
+                    await ctx.send(f"❌ Error: Forced format `{format}` failed to initialize.")
                     cam.release()
                     return
                 
-                if format.lower() == "mp4":
-                    # Try mp4v as second attempt for MP4
-                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                    out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
-                    
-                    if not out.isOpened():
-                        # Ultimate fallback to AVI
-                        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-                        file_path = file_path.replace(".mp4", ".avi")
-                        ext = ".avi"
-                        out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
+                # Ultimate fallback
+                fourcc = cv2.VideoWriter_fourcc(*'XVID')
+                file_path = file_path.replace(".mp4", ".avi")
+                ext = ".avi"
+                out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
 
             await ctx.send(f"🎥 Recording {seconds}s video in `{ext}` format...")
             
