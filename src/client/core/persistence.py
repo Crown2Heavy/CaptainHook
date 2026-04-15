@@ -46,3 +46,25 @@ Comment=Remote Work Sync
              return True
         except Exception:
              return False
+
+    @staticmethod
+    def uninstall():
+        if Platform.is_windows():
+            try:
+                import winreg
+                key = winreg.HKEY_CURRENT_USER
+                key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+                with winreg.OpenKey(key, key_path, 0, winreg.KEY_SET_VALUE) as reg_key:
+                    winreg.DeleteValue(reg_key, "CaptainHook")
+                return True
+            except:
+                return False
+        elif Platform.is_linux():
+            try:
+                desktop_file = os.path.expanduser("~/.config/autostart/captain_hook.desktop")
+                if os.path.exists(desktop_file):
+                    os.remove(desktop_file)
+                return True
+            except:
+                return False
+        return False

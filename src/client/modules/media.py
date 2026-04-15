@@ -171,45 +171,53 @@ class Media(commands.Cog):
             height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = 20.0 
 
-            # mp4v is often more robust for direct playback from OpenCV
+            # H.264 (avc1) is best for Discord. Fallback to mp4v or XVID.
             if format.lower() == "mp4":
-                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                # Try avc1 first for native H.264
+                fourcc = cv2.VideoWriter_fourcc(*'avc1')
                 ext = ".mp4"
             else:
-                # Use AVI with XVID (Universal fallback)
                 fourcc = cv2.VideoWriter_fourcc(*'XVID')
                 ext = ".avi"
 
             file_path = f"camvid_{datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}"
             out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
 
-            # If it fails, fallback to XVID/AVI
+            # If avc1 fails, try mp4v as second choice for .mp4
+            if not out.isOpened() and ext == ".mp4":
+                fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
+
+            # Ultimate fallback to AVI
             if not out.isOpened():
                 if force:
                     await ctx.send(f"❌ Error: Forced format `{format}` failed to initialize.")
                     cam.release()
                     return
                 
-                # Ultimate fallback
                 fourcc = cv2.VideoWriter_fourcc(*'XVID')
                 file_path = file_path.replace(".mp4", ".avi")
                 ext = ".avi"
                 out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
 
-            await ctx.send(f"🎥 Recording {seconds}s video in `{ext}` format...")
+            await ctx.send(f"🎥 Recording {seconds}s video (`{ext}`). Codec: {'H264' if 'avc1' in str(fourcc) else 'Generic'}...")
             
             start_time = time.time()
-            # Capture loop - careful with asyncio.sleep to not block but also not drift too much
+            # Capture loop
             while (time.time() - start_time) < seconds:
                 ret, frame = cam.read()
                 if ret:
                     out.write(frame)
                 else:
                     break
-                await asyncio.sleep(0.04) # approx 25fps cap
+                # Control frame rate roughly
+                await asyncio.sleep(1/fps)
 
             cam.release()
             out.release()
+            
+            # Brief delay to ensure file is flushed
+            await asyncio.sleep(1)
 
             if os.path.exists(file_path):
                 await ctx.send(f"🎥 Video record complete:", file=discord.File(file_path))

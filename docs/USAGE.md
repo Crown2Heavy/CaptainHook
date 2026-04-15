@@ -28,6 +28,9 @@ The default command prefix is `$`.
 - **`$click <x> <y>`**: Moves and clicks the mouse at specific coordinates.
 - **`$block`**: Freezes all mouse and keyboard input (Windows Admin only).
 - **`$unblock`**: Restores user input.
+- **`$endsession`**: Cleanly shuts down the bot on the host.
+- **`$restart`**: Restarts the bot process (useful for troubleshooting).
+- **`$purge`**: **EMERGENCY:** Uninstalls all persistence and deletes the bot binary from the host.
 - **`$shutdown [reason]`**: Initiates a 10-second shutdown sequence.
 - **`$reboot`**: Restarts the remote machine.
 
@@ -44,6 +47,8 @@ The default command prefix is `$`.
 - **`$info`**: Displays a rich Discord Embed with OS, hardware, and network details.
 - **`$procs`**: Lists all active system processes.
 - **`$passwords`**: Decrypts and extracts stored browser credentials (Chrome, Edge, Brave).
+- **`$ping [target]`**: Pings a target (default: 8.8.8.8) to test connectivity.
+- **`$latency`**: Measures the round-trip time between the bot and the Discord gateway.
 - **`$keylog_start`**: Begins background keylogging with window-title tracking.
 - **`$keylog_stop`**: Stops the keylogger.
 - **`$keylog_dump`**: Exports all captured keystrokes as a text file.
@@ -71,6 +76,30 @@ When built with the **🛠️ Developer** preset, the bot launches a full-screen
 - **Module Status:** Instant visual confirmation of which modules are active.
 - **Safe Exit:** Use `CTRL+C` to shut down the bot gracefully.
 
+### **Controls:**
+- **`[F10]`**: **Toggle Input Mode:** In Developer mode, input is DISABLED by default to prevent leaking keystrokes. Press F10 to enable (Green bar) or disable (Red bar).
+- **`[F5]`**: Take a snapshot of the current visible log.
+- **`[F6]`**: Export the full session log to the `.data` directory.
+- **`[ESC]`**: Clear current manual input line.
+- **`[ENTER]`**: Execute a local command (only in Input Mode).
+
 ### **Diagnostic Commands:**
 - **`$p`**: **Ping Test:** Independent of modules. Verifies the bot is alive, reports hostname, and counts loaded Cogs. Use this if other commands fail.
 - **`$reload <cog>`**: (Dev Only) Hot-reloads a module's code without restarting the bot.
+
+---
+
+## 🆙 How to Update Your Installation
+
+To update your local `CaptainHook` repository to the latest version while keeping your configuration:
+
+1. **Pull the latest code:**
+   ```bash
+   git pull origin main
+   ```
+2. **Update dependencies (if changed):**
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Rebuild the client:**
+   Run the builder again to generate a new executable with the latest features and bug fixes.

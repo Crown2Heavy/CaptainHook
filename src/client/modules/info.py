@@ -107,5 +107,13 @@ class Info(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ **Ping Error:** {str(e)}")
 
+    @commands.command(name="latency", aliases=["lat"], help="Measure the bot's round-trip time to Discord.")
+    async def measure_latency(self, ctx):
+        try:
+            latency = round(self.bot.latency * 1000, 2)
+            await ctx.send(f"⚓ **Discord RTT Latency:** `{latency} ms`")
+        except Exception as e:
+            await ctx.send(f"❌ Latency Error: {str(e)}")
+
 async def setup(bot):
     await bot.add_cog(Info(bot))

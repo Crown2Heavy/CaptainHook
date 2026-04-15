@@ -71,7 +71,7 @@ class Shell(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Shell Error: {str(e)}")
 
-    @commands.command(name="pwd", aliases=["ls", "dir"], help="Show current working directory.")
+    @commands.command(name="pwd", help="Show current working directory.")
     async def show_pwd(self, ctx):
         await ctx.send(f"📍 Current Directory: `{os.getcwd()}`")
 

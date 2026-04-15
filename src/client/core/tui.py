@@ -69,20 +69,24 @@ class DeveloperTUI:
         try:
             if Platform.is_linux():
                 try:
-                    # Check if the process group is the foreground one on the controlling terminal
-                    # We try multiple ways to get the controlling terminal
-                    for fd in [sys.stdin.fileno(), sys.stdout.fileno(), sys.stderr.fileno()]:
+                    # Method 1: Check /proc/self/stat for 'foreground' process group
+                    with open('/proc/self/stat', 'r') as f:
+                        stat = f.read().split()
+                        pgrp = int(stat[4])
+                        tpgid = int(stat[7])
+                        if pgrp == tpgid:
+                            return True
+                    
+                    # Method 2: Fallback to tcgetpgrp
+                    for fd in [0, 1, 2]:
                         try:
                             if os.getpgrp() == os.tcgetpgrp(fd):
                                 return True
                         except:
                             continue
-                    
-                    # If all FDs fail, we might not be in the foreground or don't have a TTY
-                    # In Developer mode on Mint, the terminal should have a TTY
                     return False
                 except:
-                    return True # Fallback to True to not block input if check is broken
+                    return True
             elif Platform.is_windows():
                 import ctypes
                 try:
@@ -215,15 +219,19 @@ class DeveloperTUI:
 
     def make_log_view(self):
         # Process ALL pending logs from queue to stay current
-        while not self.log_queue.empty():
+        processed_count = 0
+        while not self.log_queue.empty() and processed_count < 100:
             self.logs.append(self.log_queue.get())
-            # Limit memory, but enough for scroll/view (keep last 500)
-            if len(self.logs) > 500:
-                self.logs.pop(0)
+            processed_count += 1
+            
+        # Limit memory (keep last 1000)
+        if len(self.logs) > 1000:
+            self.logs = self.logs[-1000:]
 
         log_render = Text()
-        # View only the last 35 logs for the current panel (autoscroll effect)
+        # View only the last max_logs entries (aggressive auto-scroll)
         view_window = self.logs[-self.max_logs:] if len(self.logs) > self.max_logs else self.logs
+        
         for log in view_window:
             if "ERROR" in log or "FAILED" in log:
                 log_render.append(log + "\n", style="bold red")
@@ -236,7 +244,7 @@ class DeveloperTUI:
             else:
                 log_render.append(log + "\n", style="white")
                 
-        return Panel(log_render, title=f"[bold]System Event Log ({len(self.logs)} total)[/bold]", border_style="green")
+        return Panel(log_render, title=f"[bold]System Event Log ({len(self.logs)})[/bold]", border_style="green")
 
     def make_output_view(self):
         output_text = Text()
