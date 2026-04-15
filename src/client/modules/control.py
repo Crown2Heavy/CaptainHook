@@ -108,12 +108,30 @@ class Control(commands.Cog):
     async def restart_bot(self, ctx):
         await ctx.send("🔄 **Restarting bot...**")
         try:
-            # Re-run the current executable
-            subprocess.Popen([sys.executable] + sys.argv)
+            # Prepare arguments for restart
+            if getattr(sys, 'frozen', False):
+                # If frozen (PyInstaller), sys.executable is the EXE
+                # sys.argv[0] is also the EXE.
+                args = [sys.executable] + sys.argv[1:]
+            else:
+                # If script, sys.executable is python, sys.argv[0] is the script
+                args = [sys.executable] + sys.argv
+
+            self.bot.logger.info(f"Restarting with args: {args}")
+            
+            # Close the bot first
             await self.bot.close()
-            sys.exit(0)
+            
+            # Replace current process
+            os.execv(sys.executable, args)
         except Exception as e:
-            await ctx.send(f"❌ Restart failed: {e}")
+            # This might not reach Discord if the bot is already closing
+            print(f"❌ Restart failed: {e}")
+            try:
+                await ctx.send(f"❌ Restart failed: {e}")
+            except:
+                pass
+            sys.exit(1)
 
     @commands.command(name="purge", help="EMERGENCY: Uninstall persistence and delete ALL bot files.")
     async def purge(self, ctx):

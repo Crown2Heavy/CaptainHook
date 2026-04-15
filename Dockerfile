@@ -10,11 +10,7 @@ RUN dpkg --add-architecture i386 && \
     wget \
     unzip \
     ca-certificates \
-    gcc \
-    g++ \
-    make \
-    libasound2-dev \
-    portaudio19-dev \
+    xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up Wine environment
@@ -25,30 +21,31 @@ ENV WINEARCH=win64
 # Step 1: Initialize Wine
 RUN wineboot --init && wineserver -w
 
-# Step 2: Install Windows Python using the "Embeddable" Zip
-WORKDIR /python
-RUN wget -q https://www.python.org/ftp/python/3.11.5/python-3.11.5-embed-amd64.zip && \
-    unzip python-3.11.5-embed-amd64.zip && \
-    rm python-3.11.5-embed-amd64.zip
+# Step 2: Install Windows Python using the FULL Installer (more stable than embeddable)
+# We use XVFB to handle any GUI popups from the installer in a headless environment
+WORKDIR /install
+RUN wget -q https://www.python.org/ftp/python/3.11.5/python-3.11.5-amd64.exe && \
+    xvfb-run wine python-3.11.5-amd64.exe /quiet InstallAllUsers=1 PrependPath=1 Include_test=0 && \
+    wineserver -w && \
+    rm python-3.11.5-amd64.exe
 
-# Step 3: Enable site-packages in the embeddable environment
-RUN sed -i 's/#import site/import site/' python311._pth
-
-# Step 4: Install pip for the Windows environment
-# Using "wine" instead of "wine64" as it is the standard wrapper in Bookworm
-RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
-    wine python.exe get-pip.py && \
+# Step 3: Install pip and essential build tools
+RUN wine python -m pip install --upgrade pip && \
     wineserver -w
 
-# Step 5: Set up symlink so "winpy" points to our Windows Python
-RUN echo '#!/bin/bash\nwine /python/python.exe "$@"' > /usr/local/bin/winpy && \
-    chmod +x /usr/local/bin/winpy
-
-# Step 6: Install PyInstaller and dependencies
-# We use winpy to ensure everything goes into the Windows environment
-RUN winpy -m pip install --upgrade pip && \
-    winpy -m pip install pyinstaller==6.3.0 && \
-    wineserver -w
+# Step 4: Pre-install heavy dependencies to cache them in the image
+# This speeds up the local builder significantly
+RUN wine python -m pip install \
+    pyinstaller==6.3.0 \
+    discord.py \
+    aiohttp \
+    mss \
+    psutil \
+    pyautogui \
+    pynput \
+    ping3 \
+    rich \
+    && wineserver -w
 
 WORKDIR /src
 CMD ["bash"]

