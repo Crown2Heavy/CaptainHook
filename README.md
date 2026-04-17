@@ -26,11 +26,24 @@ git clone https://github.com/Crown2Heavy/CaptainHook.git
 cd CaptainHook
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-> **Want only the final binary?** After building, see [Builder Configuration](./docs/BUILDER.md#-cleanup-after-build) for easy cleanup instructions.
+### 2. How to Update Your Installation
+To keep your CaptainHook installation up-to-date with the latest features and security fixes:
 
-### 2. Professional Installation
+1. **Pull Latest Changes:**
+   ```bash
+   git pull origin main
+   ```
+2. **Update Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Re-run the Builder:**
+   Always generate a new client binary after updating the source code to ensure the latest logic is injected.
+
+### 3. Professional Installation
 Install the project as a package:
 ```bash
 pip install .

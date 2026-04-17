@@ -239,7 +239,10 @@ class DeveloperTUI:
         return Panel(table, border_style="cyan")
 
     def make_log_view(self):
-        # Process ALL pending logs from queue to stay current
+        # Process pending logs from queue
+        # If user is scrolling (offset > 0), we keep processing the queue to memory 
+        # but we don't 'push' the view. 
+        # Actually, we SHOULD always process the queue to avoid it growing too large.
         processed_count = 0
         while not self.log_queue.empty() and processed_count < 200:
             self.logs.append(self.log_queue.get())
@@ -252,8 +255,10 @@ class DeveloperTUI:
         log_render = Text()
         
         # Calculate view window based on offset
-        # offset 0 means the LATEST logs
         total_logs = len(self.logs)
+        
+        # If offset is 0, we are at the BOTTOM (latest logs)
+        # We ensure autoscroll by setting end_idx to total_logs
         end_idx = total_logs - self.log_offset
         start_idx = max(0, end_idx - self.max_logs)
         
@@ -273,7 +278,9 @@ class DeveloperTUI:
                 
         title = f"[bold]System Event Log ({total_logs})[/bold]"
         if self.log_offset > 0:
-            title += f" [yellow](Scrolling: -{self.log_offset})[/yellow]"
+            title += f" [bold yellow]⏸️ PAUSED - Scrolling: -{self.log_offset} [/bold yellow]"
+        else:
+            title += " [bold green]⏺ LIVE[/bold green]"
             
         return Panel(log_render, title=title, border_style="green")
 

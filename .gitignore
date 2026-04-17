@@ -59,6 +59,7 @@ env.bak/
 venv.bak/
 
 # Project specific
+RELEASING.md
 tests/sentinel/
 build_staging/
 *.cache

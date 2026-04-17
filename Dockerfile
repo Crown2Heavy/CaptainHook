@@ -10,7 +10,6 @@ RUN dpkg --add-architecture i386 && \
     wget \
     unzip \
     ca-certificates \
-    xvfb \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up Wine environment
@@ -21,21 +20,29 @@ ENV WINEARCH=win64
 # Step 1: Initialize Wine
 RUN wineboot --init && wineserver -w
 
-# Step 2: Install Windows Python using the FULL Installer (more stable than embeddable)
-# We use XVFB to handle any GUI popups from the installer in a headless environment
-WORKDIR /install
-RUN wget -q https://www.python.org/ftp/python/3.11.5/python-3.11.5-amd64.exe && \
-    xvfb-run wine python-3.11.5-amd64.exe /quiet InstallAllUsers=1 PrependPath=1 Include_test=0 && \
+# Step 2: Install Windows Python (Embeddable version - No GUI needed)
+WORKDIR /wine/drive_c/Python311
+RUN wget -q https://www.python.org/ftp/python/3.11.5/python-3.11.5-embed-amd64.zip && \
+    unzip python-3.11.5-embed-amd64.zip && \
+    rm python-3.11.5-embed-amd64.zip
+
+# Step 3: Enable site-packages in the embeddable build
+# We need to uncomment the site-packages line in the ._pth file
+RUN sed -i 's/#import site/import site/g' python311._pth
+
+# Step 4: Install pip
+RUN wget -q https://bootstrap.pypa.io/get-pip.py && \
+    wine python.exe get-pip.py && \
     wineserver -w && \
-    rm python-3.11.5-amd64.exe
+    rm get-pip.py
 
-# Step 3: Install pip and essential build tools
-RUN wine python -m pip install --upgrade pip && \
-    wineserver -w
+# Step 5: Add Python to Wine PATH
+ENV WINEPATH="C:\Python311;C:\Python311\Scripts"
 
-# Step 4: Pre-install heavy dependencies to cache them in the image
-# This speeds up the local builder significantly
-RUN wine python -m pip install \
+# Step 6: Install essential build tools & dependencies
+# Pre-install heavy dependencies to cache them in the image
+RUN wine python.exe -m pip install --upgrade pip && \
+    wine python.exe -m pip install \
     pyinstaller==6.3.0 \
     discord.py \
     aiohttp \
@@ -45,6 +52,7 @@ RUN wine python -m pip install \
     pynput \
     ping3 \
     rich \
+    cryptography \
     && wineserver -w
 
 WORKDIR /src
