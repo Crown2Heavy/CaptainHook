@@ -155,7 +155,7 @@ chmod +x CaptainHook
 
 **Error: `externally-managed-environment`** — You ran system `pip` on a PEP-668 managed Python. Use the virtual environment: `source .venv/bin/activate && pip install .`
 
-**Container exits immediately:** Check that Docker has internet access (the builder image downloads packages). Run `docker-compose up --build windows-builder` to force a fresh build.
+**Container exits immediately:** Check that Docker has internet access. Run `docker-compose build --no-cache windows-builder` to force a clean environment rebuild.
 
 ---
 
@@ -182,3 +182,4 @@ rm -rf docs tests .github
 - **Standard Method:** You must run the builder and PyInstaller on actual macOS hardware.
 - **Alternative:** For advanced users, tools like [osxcross](https://github.com/tpoechtrager/osxcross) exist but are complex to set up.
 - **Recommended:** Use [GitHub Actions](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#building-on-multiple-operating-systems) to automatically build for macOS in the cloud whenever you push code.
+ild for macOS in the cloud whenever you push code.

