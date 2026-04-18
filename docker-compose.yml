@@ -7,7 +7,7 @@ services:
     volumes:
       - .:/src
     command: |
-      bash -c "wine python.exe -m PyInstaller --onefile --noconsole --name CaptainHook --paths=/src/build_staging src/client/main.py"
+      bash -c "wine python.exe -m PyInstaller --onefile --name CaptainHook --paths=/src/build_staging build_staging/src/client/main.py"
 
   # Build for Linux (.bin) - Native
   linux-builder:
@@ -16,4 +16,4 @@ services:
       - .:/src
     working_dir: /src
     command: |
-      bash -c "pip install pyinstaller discord.py aiohttp mss psutil pyautogui pynput ping3 rich cryptography && pyinstaller --onefile --noconsole --name CaptainHook --paths=/src/build_staging src/client/main.py"
+      bash -c "pip install pyinstaller discord.py aiohttp mss psutil pyautogui pynput ping3 rich cryptography==38.0.4 && pyinstaller --onefile --name CaptainHook --paths=/src/build_staging build_staging/src/client/main.py"

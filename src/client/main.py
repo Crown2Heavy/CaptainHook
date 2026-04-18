@@ -238,6 +238,20 @@ class CaptainHookBot(commands.Bot):
         for path in [own_path, logs_path]:
             os.makedirs(path, exist_ok=True)
 
+        # Persistent File Logger
+        log_file = os.path.join(logs_path, "session.log")
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))
+        logging.getLogger().addHandler(file_handler)
+        
+        logger.info(f"⚓ Bot is ready! Log file: {log_file}")
+        
+        # Notify Discord session channel
+        channel = await self.get_or_create_session_channel()
+        if channel:
+            dev_status = "ENABLED" if Config.DEVELOPER_MODE else "DISABLED"
+            await channel.send(f"✅ **System Ready**\n- **Developer Mode:** `{dev_status}`\n- **Cogs Loaded:** `{len(self.cogs)}`")
+
 async def main():
     # Setup emergency file logging
     appdata = Platform.get_appdata_path(local=Config.DEVELOPER_MODE)

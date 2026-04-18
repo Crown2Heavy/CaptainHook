@@ -13,4 +13,4 @@ class Config:
     # Default paths
     OWN_DIR_NAME = ".CaptainHook"
     LOGS_DIR_NAME = "logs"
-    VERSION = "0.1.0"
+    VERSION = "3.1"

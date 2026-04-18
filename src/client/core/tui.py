@@ -58,10 +58,18 @@ class DeveloperTUI:
 
     def setup_logging(self):
         root_logger = logging.getLogger()
-        root_logger.handlers = []
-        root_logger.setLevel(logging.INFO)
+        # Instead of clearing ALL handlers, we just want to ADD our TUI handler
+        # but the TUI wants to be the only one for the console.
+        # So we identify and remove only StreamHandlers that point to stderr/stdout
+        to_remove = []
+        for h in root_logger.handlers:
+            if isinstance(h, logging.StreamHandler) and not isinstance(h, TUILogHandler):
+                to_remove.append(h)
+        
+        for h in to_remove:
+            root_logger.removeHandler(h)
+
         handler = TUILogHandler(self.log_queue)
-        # Fix for date formatting
         formatter = logging.Formatter('%(asctime)s | %(message)s', datefmt='%H:%M:%S')
         handler.setFormatter(formatter)
         root_logger.addHandler(handler)
@@ -362,8 +370,16 @@ class DeveloperTUI:
                     layout["footer"].update(self.make_footer())
                     time.sleep(0.05)
         except Exception as e:
-             logging.error(f"[TUI] Live TUI CRASHED: {e}")
+             # Fallback: Restore standard logging if TUI crashes
              self.is_running = False
+             root_logger = logging.getLogger()
+             # Re-add a basic stream handler so logs aren't completely lost
+             if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, TUILogHandler) for h in root_logger.handlers):
+                 handler = logging.StreamHandler(sys.stdout)
+                 handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))
+                 root_logger.addHandler(handler)
+             logging.error(f"[TUI] Live TUI CRASHED: {e}")
+             print(f"\n[!] TUI Crash Detected. Falling back to standard console logging.\nError: {e}")
 
     def start(self):
         t = Thread(target=self.run, daemon=True)
