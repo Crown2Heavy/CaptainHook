@@ -20,3 +20,4 @@ keyboard
 pillow
 screeninfo
 pyttsx3
+certifi

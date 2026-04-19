@@ -5,6 +5,9 @@ services:
     image: captainhook-winbuild
     build: .
     container_name: ch_win_builder
+    user: "${CURRENT_UID}:${CURRENT_GID}"
+    environment:
+      - WINEPREFIX=/tmp/wine
     volumes:
       - .:/src
     command: wine python.exe -m PyInstaller --onefile --name CaptainHook --paths=/src/build_staging build_staging/src/client/main.py

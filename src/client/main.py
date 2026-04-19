@@ -6,6 +6,14 @@ import sys
 import aiohttp
 import io
 import socket
+import logging
+import ssl
+import certifi
+
+# Fix SSL certificates for frozen executables (PyInstaller)
+if getattr(sys, 'frozen', False):
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 from src.client.core.config import Config
 from src.client.core.platform import Platform
@@ -267,6 +275,7 @@ async def main():
     os.makedirs(own_path, exist_ok=True)
     error_log = os.path.join(own_path, "startup_error.log")
 
+    bot = None
     try:
         token = os.environ.get("DISCORD_TOKEN", Config.DISCORD_TOKEN)
         if "PLACEHOLDER" in token:
@@ -284,6 +293,9 @@ async def main():
         # Also print to console if possible
         print(f"CRITICAL STARTUP ERROR: {e}")
         sys.exit(1)
+    finally:
+        if bot and hasattr(bot, 'tui'):
+            bot.tui.stop()
 
 if __name__ == "__main__":
     from datetime import datetime

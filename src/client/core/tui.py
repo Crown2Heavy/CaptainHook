@@ -168,20 +168,31 @@ class DeveloperTUI:
             parts = clean_cmd.split()
             if not parts: return
             cmd_name = parts[0]
-            args = parts[1:]
             
             command = self.bot.get_command(cmd_name)
             if command:
                 try:
                     # Create a robust Mock context
+                    class MockMsg:
+                        def __init__(self, content, author):
+                            self.content = content
+                            self.author = author
+                            self.attachments = []
+                            self.embeds = []
+                            self.reference = None
+                            self.flags = type('Flags', (), {'value': 0})()
+                            self.id = 0
+                            self.channel = None # Set later
+                    
                     class MockCtx:
                         def __init__(self, bot, tui):
                             self.bot = bot
                             self.tui = tui
-                            self.author = type('User', (), {'name': 'LocalDev', 'bot': False, 'id': 0, 'mention': '@LocalDev'})()
+                            self.author = type('User', (), {'name': 'LocalDev', 'bot': False, 'id': 0, 'mention': '@LocalDev', 'display_name': 'LocalDev'})()
                             self.guild = None
-                            self.channel = type('Channel', (), {'id': 0, 'send': self.send})()
-                            self.message = type('Msg', (), {'content': cmd_text, 'author': self.author})()
+                            self.channel = type('Channel', (), {'id': 0, 'send': self.send, 'name': 'tui-console'})()
+                            self.message = MockMsg(cmd_text, self.author)
+                            self.message.channel = self.channel
                             self.command = command
                             self.prefix = Config.COMMAND_PREFIX
                         
@@ -189,7 +200,7 @@ class DeveloperTUI:
                             msg = ""
                             if content: msg += str(content)
                             if embed: msg += f"\n[EMBED] {embed.title or ''}: {embed.description or ''}"
-                            if file: msg += f"\n[FILE] {file.filename}"
+                            if file: msg += f"\n[FILE] {getattr(file, 'filename', 'unknown')}"
                             self.tui.output_queue.put(msg)
                             logging.info(f"[TUI-RES] {msg[:100]}...")
 
@@ -342,6 +353,18 @@ class DeveloperTUI:
         with open(file_path, "w") as f:
             f.write("\n".join(to_save))
         logging.info(f"[TUI] {'Full' if full else 'Visible'} log saved to: {file_path}")
+
+    def stop(self):
+        """Safely stop the TUI and its listeners."""
+        self.is_running = False
+        if self.listener:
+            try:
+                self.listener.stop()
+            except:
+                pass
+        # Clear any buffered terminal input to prevent junk
+        sys.stdin.flush()
+        print("[TUI] Stopped.")
 
     def run(self):
         logging.info("[TUI] Thread started. Initializing Live view...")

@@ -53,6 +53,7 @@ RUN wine python.exe -m pip install --upgrade pip && \
     ping3 \
     rich \
     pyttsx3 \
+    certifi \
     cryptography==38.0.4 \
     && wineserver -w
 
