@@ -352,18 +352,28 @@ class DeveloperTUI:
             with Live(layout, refresh_per_second=10, screen=True) as live:
                 logging.info("[TUI] Live view active.")
                 while self.is_running:
-                    # Handle dynamic layout for stats
+                    # Handle dynamic layout for stats without destroying sub-layouts
                     if self.show_stats:
                         layout["main"].split_row(
                             Layout(name="sidebar", size=26),
                             Layout(name="content"),
                             Layout(name="stats_panel", size=26)
                         )
+                        # Re-split content because it was re-created by split_row
+                        layout["content"].split_column(
+                            Layout(name="body", ratio=2),
+                            Layout(name="output", ratio=1)
+                        )
                         layout["stats_panel"].update(self.make_stats_view())
                     else:
                         layout["main"].split_row(
                             Layout(name="sidebar", size=26),
                             Layout(name="content")
+                        )
+                        # Re-split content because it was re-created by split_row
+                        layout["content"].split_column(
+                            Layout(name="body", ratio=2),
+                            Layout(name="output", ratio=1)
                         )
 
                     # Update data
