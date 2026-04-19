@@ -19,3 +19,4 @@ vidstream
 keyboard
 pillow
 screeninfo
+pyttsx3
