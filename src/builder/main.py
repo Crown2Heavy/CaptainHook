@@ -71,16 +71,16 @@ DISGUISES = {
 def display_banner():
     banner = """
 [bold cyan]
- ██████╗ █████╗ ██████╗ ████████╗ █████╗ ██╗███╗   ██╗    ██╗  ██╗ ██████╗  ██████╗ ██╗  ██╗
-██╔════╝██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗██║████╗  ██║    ██║  ██║██╔═══██╗██╔═══██╗██║ ██╔╝
-██║     ███████║██████╔╝   ██║   ███████║██║██╔██╗ ██║    ███████║██║   ██║██║   ██║█████╔╝ 
-██║     ██╔══██║██╔═══╝    ██║   ██╔══██║██║██║╚██╗██║    ██╔══██║██║   ██║██║   ██║██╔═██╗ 
-╚██████╗██║  ██║██║        ██║   ██║  ██║██║██║ ╚████║    ██║  ██║╚██████╔╝╚██████╔╝██║  ██╗
- ╚═════╝╚═bottom═╝╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝    ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
+   ██████╗ █████╗ ██████╗ ████████╗ █████╗ ██╗███╗   ██╗
+  ██╔════╝██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗██║████╗  ██║
+  ██║     ███████║██████╔╝   ██║   ███████║██║██╔██╗ ██║
+  ██║     ██╔══██║██╔═══╝    ██║   ██╔══██║██║██║╚██╗██║
+  ╚██████╗██║  ██║██║        ██║   ██║  ██║██║██║ ╚████║
+   ╚═════╝╚═╝  ╚═╝╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
 [/bold cyan]
-[bold white]                         - Architect Builder v3.1 - [/bold white]
+[bold white]               - Architect Builder v3.1 - [/bold white]
     """
-    console.print(Panel(banner, border_style="cyan", padding=(1, 2)))
+    console.print(Panel(banner, border_style="cyan", padding=(1, 1)))
 
 def get_config():
     token = Prompt.ask("[bold yellow]Discord Bot Token[/bold yellow]")
@@ -335,7 +335,8 @@ def build(token, guild_id, preset_name, disguise_name):
         override_content = f"""version: '2.4'
 services:
   windows-builder:
-    command: bash -c "{docker_cmd}"
+    container_name: ch_win_builder
+    command: {docker_cmd}
 """
         with open("docker-compose.override.yml", "w") as f:
             f.write(override_content)

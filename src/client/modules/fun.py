@@ -73,11 +73,12 @@ class Fun(commands.Cog):
             def tts_thread():
                 try:
                     import logging
+                    import pyttsx3
                     engine = pyttsx3.init()
-                    # On Linux, espeak is usually the driver. 
-                    # If it fails, we might want to try to specify it.
                     engine.say(text)
                     engine.runAndWait()
+                except ImportError:
+                    logging.error("[FUN] TTS Error: pyttsx3 not installed.")
                 except Exception as e:
                     logging.error(f"[FUN] TTS Thread Error: {e}")
             

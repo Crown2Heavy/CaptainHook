@@ -387,5 +387,7 @@ class DeveloperTUI:
              print(f"\n[!] TUI Crash Detected. Falling back to standard console logging.\nError: {e}")
 
     def start(self):
+        print("[TUI] Spawning TUI thread...")
         t = Thread(target=self.run, daemon=True)
         t.start()
+        print("[TUI] TUI thread spawned.")
