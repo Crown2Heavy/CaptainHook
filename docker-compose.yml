@@ -1,4 +1,4 @@
-version: '3.8'
+version: '2.4'
 
 services:
   # Build for Windows (.exe) using Wine + Windows Python
@@ -6,8 +6,7 @@ services:
     build: .
     volumes:
       - .:/src
-    command: |
-      bash -c "wine python.exe -m PyInstaller --onefile --name CaptainHook --paths=/src/build_staging build_staging/src/client/main.py"
+    command: bash -c "wine python.exe -m PyInstaller --onefile --name CaptainHook --paths=/src/build_staging build_staging/src/client/main.py"
 
   # Build for Linux (.bin) - Native
   linux-builder:

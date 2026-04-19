@@ -9,6 +9,7 @@ class Config:
     
     COMMAND_PREFIX = "$"
     DEVELOPER_MODE = False
+    OBSERVABILITY = False
 
     # Default paths
     OWN_DIR_NAME = ".CaptainHook"

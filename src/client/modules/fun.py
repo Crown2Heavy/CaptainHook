@@ -71,14 +71,21 @@ class Fun(commands.Cog):
     async def speak(self, ctx, *, text):
         try:
             def tts_thread():
-                engine = pyttsx3.init()
-                engine.say(text)
-                engine.runAndWait()
+                try:
+                    import logging
+                    engine = pyttsx3.init()
+                    # On Linux, espeak is usually the driver. 
+                    # If it fails, we might want to try to specify it.
+                    engine.say(text)
+                    engine.runAndWait()
+                except Exception as e:
+                    logging.error(f"[FUN] TTS Thread Error: {e}")
             
-            threading.Thread(target=tts_thread).start()
+            threading.Thread(target=tts_thread, daemon=True).start()
             await ctx.send(f"🗣️ Speaking: `{text}`")
         except Exception as e:
             await ctx.send(f"❌ TTS Error: {str(e)}")
+            self.bot.logger.error(f"TTS Error: {e}")
 
     @commands.command(name="bsod", help="Trigger a real Blue Screen of Death (Windows Admin only).")
     async def bsod(self, ctx):
