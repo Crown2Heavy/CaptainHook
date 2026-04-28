@@ -21,43 +21,45 @@ class Help(commands.Cog):
         }
 
         if category:
-            category = category.lower().capitalize()
-            if category in categories:
-                await self.send_category_help(ctx, category, categories[category])
+            category_key = category.lower().capitalize()
+            if category_key in categories:
+                await self.send_category_help(ctx, category_key, categories[category_key])
                 return
 
         # Main Help Embed
         embed = discord.Embed(
-            title="⚓ CaptainHook Command Menu",
-            description=f"Remote Control & Monitoring System v{Config.VERSION}\nTarget: `{socket.gethostname()}`",
-            color=discord.Color.blue()
+            title="⚓ CaptainHook v" + Config.VERSION,
+            description=(
+                f"**Remote Management Interface**\n"
+                f"Host: `{socket.gethostname()}`\n"
+                f"Prefix: `{prefix}`\n\n"
+                f"Use `{prefix}help <category>` to see all commands in a group."
+            ),
+            color=0x2b2d31 # Dark Discord theme color
         )
 
+        # Quick Links/Highlights
+        quick_start = (
+            f"⚡ `{prefix}p` - Connectivity Check\n"
+            f"🐚 `{prefix}sh` - Remote Shell\n"
+            f"📸 `{prefix}ss` - Screenshot\n"
+            f"📂 `{prefix}ls` - File Manager"
+        )
+        embed.add_field(name="🚀 Quick Access", value=quick_start, inline=False)
+
+        # Categories
+        cat_links = " | ".join([f"`{c}`" for c in categories.keys()])
+        embed.add_field(name="📁 Command Categories", value=cat_links, inline=False)
+
+        # Detail on how to use
         embed.add_field(
-            name="🚀 Quick Start",
-            value=f"`{prefix}p` - Connectivity Test\n`{prefix}sh <cmd>` - Remote Shell\n`{prefix}ss` - Take Screenshot\n`{prefix}ls` - List Files",
+            name="⌨️ Example Usage",
+            value=f"`{prefix}help System` - Show system management commands\n`{prefix}help Core` - Show bot control commands",
             inline=False
         )
 
-        # List categories
-        cat_desc = ""
-        for cat, cogs in categories.items():
-            cat_desc += f"**{cat}** - `{prefix}help {cat.lower()}`\n"
-        
-        embed.add_field(name="📁 Categories", value=cat_desc, inline=False)
-        
-        # Common Aliases Section
-        aliases_list = (
-            f"`$ss` -> screenshot\n"
-            f"`$sh` -> shell\n"
-            f"`$ls` -> file_manager\n"
-            f"`$p`  -> ping_test\n"
-            f"`$h`  -> help"
-        )
-        embed.add_field(name="⌨️ Common Aliases", value=aliases_list, inline=True)
-
-        footer_text = f"Use {prefix}help <category> for more details. | CaptainHook v{Config.VERSION}"
-        embed.set_footer(text=footer_text)
+        embed.set_thumbnail(url="https://raw.githubusercontent.com/Rich-Ian/CaptainHook/main/Captain%20Hook.ico")
+        embed.set_footer(text=f"CaptainHook | Crafted for efficiency.")
 
         await ctx.send(embed=embed)
 
@@ -65,13 +67,15 @@ class Help(commands.Cog):
         prefix = Config.COMMAND_PREFIX
         embed = discord.Embed(
             title=f"📁 Category: {category_name}",
-            description=f"Commands available in the {category_name} module.",
-            color=discord.Color.green()
+            description=f"Detailed list of commands within the {category_name} module.",
+            color=0x3498db # Nice blue
         )
 
+        found_commands = False
         for cog_name in cog_names:
             # Match cog name to actual Cog class name (usually Capitalized)
-            actual_cog_name = cog_name.replace("_", " ").title().replace(" ", "")
+            # Normalizing naming convention: module 'file_manager' -> Cog 'FileManager'
+            actual_cog_name = "".join([word.capitalize() for word in cog_name.split("_")])
             cog = self.bot.get_cog(actual_cog_name)
             
             if cog:
@@ -80,15 +84,16 @@ class Help(commands.Cog):
                     cmd_info = ""
                     for cmd in commands_list:
                         if not cmd.hidden:
-                            # Show aliases if they exist
-                            alias_str = f" ({', '.join(cmd.aliases)})" if cmd.aliases else ""
-                            cmd_info += f"**{prefix}{cmd.name}**{alias_str}: {cmd.help or 'No description'}\n"
+                            alias_str = f"| `{', '.join(cmd.aliases)}`" if cmd.aliases else ""
+                            cmd_info += f"**`{prefix}{cmd.name}`** {alias_str}\n└ {cmd.help or 'No description'}\n"
                     
                     if cmd_info:
                         embed.add_field(name=f"📦 {actual_cog_name}", value=cmd_info, inline=False)
+                        found_commands = True
 
-        if not embed.fields:
-             embed.description = "No commands found for this category or modules not loaded."
+        if not found_commands:
+             embed.description = "❌ No modules or commands found for this category."
+             embed.color = discord.Color.red()
 
         embed.set_footer(text=f"Use {prefix}help for the main menu.")
         await ctx.send(embed=embed)

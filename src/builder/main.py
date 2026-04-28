@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.live import Live
 from rich.columns import Columns
+from rich.align import Align
 
 console = Console()
 
@@ -87,7 +88,7 @@ def display_banner():
 [/bold cyan]
 [bold white]               - Architect Builder v3.1 - [/bold white]
     """
-    console.print(Panel(Align.center(banner), border_style="cyan", padding=(1, 1)))
+    console.print(Panel(Align(banner, align="center"), border_style="cyan", padding=(1, 1)))
 
 def get_config():
     token = Prompt.ask("[bold yellow]Discord Bot Token[/bold yellow]")
